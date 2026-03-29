@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Task {
+  id        Int      @id @default(autoincrement())
+  title     String
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id           Int         @id @default(autoincrement())
+  username     String      @unique
+  passwordHash String
+  displayName  String?
+  nickname     String?
+  gender       Int?
+  mobile       String?
+  email        String?
+  avatar       String?
+  address      String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  commodities  Commodity[]
+  posts        Post[]
+  sentMessages     ChatMessage[] @relation("ChatFromUser")
+  receivedMessages ChatMessage[] @relation("ChatToUser")
+  addresses    Address[]
+}
+
+model Commodity {
+  id          Int      @id @default(autoincrement())
+  name        String
+  detail      String?
+  tag         String?
+  price       Decimal  @db.Decimal(10, 2)
+  stock       Int      @default(1)
+  imageUrl    String?  @db.Text
+  sellerId    Int
+  seller      User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+  @@index([tag])
+}
+
+model PostCategory {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  posts     Post[]
+}
+
+model Post {
+  id          Int          @id @default(autoincrement())
+  title       String
+  content     String       @db.Text
+  excerpt     String?
+  userId      Int
+  categoryId  Int
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    PostCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([categoryId])
+  @@index([createdAt])
+}
+
+model ChatMessage {
+  id         Int      @id @default(autoincrement())
+  fromUserId Int
+  toUserId   Int
+  content    String   @db.Text
+  createdAt  DateTime @default(now())
+
+  fromUser User @relation("ChatFromUser", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser   User @relation("ChatToUser", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@index([fromUserId, toUserId])
+  @@index([toUserId, fromUserId])
+  @@index([createdAt])
+}
+
+model Address {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  addressee   String
+  mobile      String
+  province    String
+  city        String
+  fullAddress String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

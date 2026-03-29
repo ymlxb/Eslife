@@ -1,0 +1,15 @@
+.edit-user-info-container {
+  padding: 2rem;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+.edit-user-info-container .edit-form {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 8px;
+}
+.edit-user-info-container .button-group {
+  display: flex;
+  justify-content: flex-end;
+}

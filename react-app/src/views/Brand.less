@@ -1,0 +1,404 @@
+.brand-contain {
+  margin: auto;
+  background-color: #f7f7f7;
+  font-family: "Lato", sans-serif;
+  box-sizing: border-box;
+  font-size: 1.6rem;
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: inherit;
+  }
+
+  @media screen and (min-width: 1920px) {
+    width: 80%;
+    padding: 3rem;
+  }
+
+  @media screen and (max-width: 1919px) {
+    width: 85%;
+    padding: 2.5rem;
+  }
+
+  @media screen and (max-width: 1680px) {
+    width: 88%;
+    padding: 2rem;
+  }
+
+  @media screen and (max-width: 1024px) {
+    width: 93%;
+    padding: 1.5rem;
+  }
+
+  @media screen and (max-width: 768px) {
+    width: 100%;
+    // padding: 1rem;
+  }
+
+  .header {
+    width: 80%;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    background: none;
+    clip-path: none;
+    height: auto;
+    position: static;
+    overflow: hidden;
+
+    @media screen and (min-width: 1920px) {
+      height: 30rem;
+    }
+
+    @media screen and (max-width: 1919px) {
+      height: 28rem;
+    }
+
+    @media screen and (max-width: 1680px) {
+      height: 25rem;
+    }
+
+    @media screen and (max-width: 1024px) {
+      height: 22rem;
+    }
+
+    @media screen and (max-width: 768px) {
+      height: 20rem;
+    }
+  }
+
+  .slogan {
+    font-size: 3rem;
+    color: green;
+    text-align: center;
+    margin-bottom: 2.5rem;
+    font-weight: normal;
+    letter-spacing: normal;
+    text-shadow: none;
+    animation: none;
+  }
+
+  .carousel-container {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    margin-top: 0;
+
+    .slick-slider,
+    .slick-list,
+    .slick-track,
+    .slick-slide,
+    .slick-slide > div {
+      height: 100%;
+    }
+
+    .head-img {
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
+      border-radius: 0;
+      box-shadow: none;
+      display: block;
+    }
+    
+    // Ant Design Carousel specific overrides to match Element Plus card type carousel
+    .slick-slide {
+      text-align: center;
+      background: #364d79;
+      overflow: hidden;
+    }
+
+    .slick-slide h3 {
+      color: #fff;
+    }
+  }
+
+  .show {
+    margin-top: 10rem;
+    background-color: #f7f7f7;
+    padding: 5rem 0;
+  }
+
+  .show-box {
+    max-width: none;
+    margin: 0;
+    margin-bottom: 0;
+  }
+
+  .show-box-title {
+    font-size: 3rem;
+    margin-bottom: 2rem;
+    text-transform: none;
+    font-weight: normal;
+    display: block;
+    background-image: none;
+    color: inherit;
+    letter-spacing: normal;
+    transition: none;
+
+    &:hover {
+      transform: none;
+      text-shadow: none;
+    }
+  }
+
+  .show-box-title-second {
+    font-size: 4rem;
+    margin-bottom: 2rem;
+    text-align: center;
+    color: #006400;
+    font-weight: normal;
+    text-transform: none;
+  }
+
+  .show-box-item {
+    width: 100%;
+    margin: 0 auto;
+    margin-bottom: 10rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    gap: 2rem;
+    justify-content: normal;
+
+    &:not(:last-child) {
+      margin-bottom: 8rem;
+    }
+  }
+
+  .show-box-item--1 {
+    width: auto;
+    background-color: transparent;
+    box-shadow: none;
+    border-radius: 0;
+    overflow: visible;
+    transition: none;
+    position: relative;
+
+    &:hover {
+      transform: translate(0, -3px);
+    }
+
+    .show-box-brg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: transparent;
+      transition: background-color 0.3s;
+      z-index: -1;
+      height: auto;
+      background-image: none;
+      clip-path: none;
+    }
+
+    &:hover .show-box-brg {
+      background-color: rgba(128, 128, 128, 0.5);
+    }
+
+    .show-box-content {
+      padding: 0;
+      position: relative;
+      margin-top: 0;
+      text-align: left;
+      transition: all 0.3s;
+    }
+
+    &:hover .show-box-content {
+      transform: translate(-1rem, -1rem);
+    }
+
+    .show-box-item-img {
+      width: auto;
+      height: auto;
+      margin: 0;
+      border-radius: 0;
+      overflow: visible;
+      border: none;
+      box-shadow: none;
+
+      .show-box-item-img-one {
+        float: left;
+        object-fit: fill;
+        
+        @media screen and (min-width: 1920px) {
+          height: 40rem;
+          width: 50%;
+        }
+
+        @media screen and (max-width: 1919px) {
+          height: 35rem;
+          width: 50%;
+        }
+
+        @media screen and (max-width: 1680px) {
+          height: 30rem;
+          width: 48%;
+        }
+
+        @media screen and (max-width: 1024px) {
+          height: 25rem;
+          width: 45%;
+        }
+
+        @media screen and (max-width: 768px) {
+          height: 20rem;
+          width: 42%;
+        }
+      }
+    }
+
+    .show-box-item-details {
+      margin-top: 0;
+      text-align: left;
+      background-color: skyblue;
+      
+      @media screen and (min-width: 1920px) {
+        height: 40rem;
+      }
+
+      @media screen and (max-width: 1919px) {
+        height: 35rem;
+      }
+
+      @media screen and (max-width: 1680px) {
+        height: 30rem;
+      }
+
+      @media screen and (max-width: 1024px) {
+        height: 25rem;
+      }
+
+      @media screen and (max-width: 768px) {
+        height: 20rem;
+      }
+
+      .title-second {
+        padding-top: 0.5rem;
+        font-weight: normal;
+        text-transform: none;
+        color: inherit;
+        margin-bottom: 0;
+
+        @media screen and (min-width: 1920px) {
+          font-size: 2.5rem;
+        }
+
+        @media screen and (max-width: 1919px) {
+          font-size: 2.3rem;
+        }
+
+        @media screen and (max-width: 1680px) {
+          font-size: 2.1rem;
+        }
+
+        @media screen and (max-width: 1024px) {
+          font-size: 1.9rem;
+        }
+
+        @media screen and (max-width: 768px) {
+          font-size: 1.6rem;
+        }
+      }
+
+      .paragraph {
+        color: inherit;
+        margin-bottom: 0;
+        letter-spacing: 0.1rem;
+        line-height: 1.4;
+        overflow: hidden;
+        padding-left: 1rem;
+
+        @media screen and (min-width: 1920px) {
+          font-size: 1.6rem;
+        }
+
+        @media screen and (max-width: 1919px) {
+          font-size: 1.5rem;
+        }
+
+        @media screen and (max-width: 1680px) {
+          font-size: 1.4rem;
+        }
+
+        @media screen and (max-width: 1024px) {
+          font-size: 1.3rem;
+        }
+
+        @media screen and (max-width: 768px) {
+          font-size: 1.2rem;
+        }
+
+        &:not(:last-child) {
+          @media screen and (min-width: 1920px) {
+            margin-bottom: 2rem;
+          }
+
+          @media screen and (max-width: 1919px) {
+            margin-bottom: 1.6rem;
+          }
+
+          @media screen and (max-width: 1680px) {
+            margin-bottom: 1.2rem;
+          }
+
+          @media screen and (max-width: 1024px) {
+            margin-bottom: 0.8rem;
+          }
+
+          @media screen and (max-width: 768px) {
+            margin-bottom: 0.4rem;
+          }
+        }
+      }
+
+      .btn-text {
+        font-size: 1.6rem;
+        text-decoration: none;
+        color: #28b485;
+        display: inline-block;
+        border-bottom: 1px solid #28b485;
+        padding: 3px;
+        transition: all 0.2s;
+        background-color: transparent;
+        box-shadow: none;
+        transform: none;
+
+        &:hover {
+          background-color: #28b485;
+          color: #fff;
+          transform: translateY(-3px);
+          box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.5);
+        }
+
+        &:active {
+          transform: translateY(0);
+          box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.2);
+        }
+      }
+    }
+  }
+
+  .u-margin-button-2 {
+    @media screen and (min-width: 1920px) {
+      margin-bottom: 2rem;
+    }
+
+    @media screen and (max-width: 1919px) {
+      margin-bottom: 1.8rem;
+    }
+
+    @media screen and (max-width: 1680px) {
+      margin-bottom: 1.6rem;
+    }
+
+    @media screen and (max-width: 1024px) {
+      margin-bottom: 1.4rem;
+    }
+
+    @media screen and (max-width: 768px) {
+      margin-bottom: 1.2rem;
+    }
+  }
+}

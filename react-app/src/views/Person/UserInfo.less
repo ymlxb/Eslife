@@ -1,0 +1,65 @@
+.user-info-container {
+  padding: 2rem;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+
+  .user-info-content {
+    margin-bottom: 3rem;
+  }
+
+  .avatar-section {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2rem;
+
+    .label {
+      width: 8rem;
+      text-align: right;
+      margin-right: 1rem;
+      font-size: 1.6rem;
+      color: #606266;
+    }
+
+    .avatar {
+      border: 1px solid #dcdfe6;
+    }
+  }
+
+  .info-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2rem;
+    font-size: 1.6rem;
+
+    .label {
+      width: 8rem;
+      text-align: right;
+      margin-right: 1rem;
+      color: #606266;
+    }
+
+    .value {
+      color: #303133;
+    }
+  }
+
+  .button-group {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+    border-top: 1px solid #ebeef5;
+    padding-top: 2rem;
+
+    .btn-edit {
+      background-color: #e6a23c;
+      border-color: #e6a23c;
+
+      &:hover {
+        background-color: #ebb563;
+        border-color: #ebb563;
+      }
+    }
+  }
+}

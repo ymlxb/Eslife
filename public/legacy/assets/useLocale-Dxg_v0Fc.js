@@ -1,0 +1,1 @@
+import{r as l,bA as u,av as c}from"./index-Ba04Ky2f.js";const C=(t,s)=>{const o=l.useContext(u),r=l.useMemo(()=>{const e=s||c[t],n=o?.[t]??{};return{...typeof e=="function"?e():e,...n||{}}},[t,s,o]),a=l.useMemo(()=>{const e=o?.locale;return o?.exist&&!e?c.locale:e},[o]);return[r,a]};export{C as u};

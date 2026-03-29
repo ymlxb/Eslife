@@ -1,0 +1,153 @@
+.community-container {
+  min-height: 100vh;
+  background-color: #f5f7fa;
+}
+
+.community-header {
+  background: linear-gradient(135deg, #67c23a 0%, #409eff 100%);
+  padding: 60px 0;
+  text-align: center;
+  color: white;
+  margin-bottom: 30px;
+
+  .header-content {
+    max-width: 800px;
+    margin: 0 auto;
+
+    .title {
+      font-size: 36px;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+
+    .subtitle {
+      font-size: 18px;
+      opacity: 0.9;
+      margin-bottom: 30px;
+    }
+
+    .post-button {
+      padding: 12px 30px;
+      font-size: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      transition: transform 0.2s;
+
+      &:hover {
+        transform: translateY(-2px);
+      }
+    }
+  }
+}
+
+.community-main {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 20px 40px;
+}
+
+.category-nav {
+  background: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+
+  .ant-tabs-nav {
+    margin-bottom: 0;
+  }
+}
+
+.post-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.post-item {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  display: flex;
+  gap: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid #ebeef5;
+  position: relative;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    border-color: #c6e2ff;
+  }
+
+  .post-avatar {
+    flex-shrink: 0;
+  }
+
+  .post-content {
+    flex: 1;
+    min-width: 0;
+
+    .post-title {
+      margin: 0 0 12px;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+
+      .category-tag {
+        flex-shrink: 0;
+      }
+
+      .title-text {
+        color: #303133;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    .post-meta {
+      display: flex;
+      align-items: center;
+      color: #909399;
+      font-size: 13px;
+      margin-bottom: 12px;
+
+      .author {
+        color: #606266;
+        font-weight: 500;
+      }
+
+      .stat {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+    }
+
+    .post-excerpt {
+      color: #606266;
+      font-size: 14px;
+      line-height: 1.6;
+      margin: 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  }
+
+  .delete-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  &:hover .delete-btn {
+    opacity: 1;
+  }
+}
