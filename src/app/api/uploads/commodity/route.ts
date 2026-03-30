@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { NextResponse } from "next/server";
+import { put } from "@vercel/blob";
 
 import { getCurrentUser } from "@/lib/current-user";
 
@@ -44,14 +45,27 @@ export async function POST(request: Request) {
   }
 
   const uploadDir = path.join(process.cwd(), "public", "uploads", "commodities");
-  await mkdir(uploadDir, { recursive: true });
+  const canUseBlob = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  if (!canUseBlob) {
+    await mkdir(uploadDir, { recursive: true });
+  }
 
   const urls: string[] = [];
 
   for (const file of files) {
+    const filename = `${Date.now()}-${randomUUID()}${extFromType(file.type)}`;
+
+    if (canUseBlob) {
+      const blob = await put(`uploads/commodities/${filename}`, file, {
+        access: "public",
+        addRandomSuffix: false,
+      });
+      urls.push(blob.url);
+      continue;
+    }
+
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const filename = `${Date.now()}-${randomUUID()}${extFromType(file.type)}`;
     const fullPath = path.join(uploadDir, filename);
     await writeFile(fullPath, buffer);
     urls.push(`/uploads/commodities/${filename}`);

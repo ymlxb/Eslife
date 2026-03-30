@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { NextResponse } from "next/server";
+import { put } from "@vercel/blob";
 
 import { getCurrentUser } from "@/lib/current-user";
 
@@ -39,14 +40,24 @@ export async function POST(request: Request) {
   }
 
   const uploadDir = path.join(process.cwd(), "public", "uploads", "avatars");
-  await mkdir(uploadDir, { recursive: true });
-
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
   const filename = `${Date.now()}-${randomUUID()}${extFromType(file.type)}`;
-  const fullPath = path.join(uploadDir, filename);
-  await writeFile(fullPath, buffer);
+  const canUseBlob = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 
-  const url = `/uploads/avatars/${filename}`;
+  let url = "";
+  if (canUseBlob) {
+    const blob = await put(`uploads/avatars/${filename}`, file, {
+      access: "public",
+      addRandomSuffix: false,
+    });
+    url = blob.url;
+  } else {
+    await mkdir(uploadDir, { recursive: true });
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const fullPath = path.join(uploadDir, filename);
+    await writeFile(fullPath, buffer);
+    url = `/uploads/avatars/${filename}`;
+  }
+
   return NextResponse.json({ code: 0, msg: "上传成功", data: { url } });
 }
