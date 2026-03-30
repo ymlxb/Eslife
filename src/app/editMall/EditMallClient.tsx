@@ -58,25 +58,56 @@ export default function EditMallClient({ commodityId }: Props) {
   }, [commodityId]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(event.target.files || []).slice(0, 5);
+    const selected = Array.from(event.target.files || []);
+    if (selected.length === 0) return;
+
     const invalidType = selected.some((file) => !/^image\/(jpeg|jpg|png|webp|jfif)$/i.test(file.type));
     if (invalidType) {
       setError("图片必须是 jpg、png、webp 或 jfif 格式");
+      event.target.value = "";
       return;
     }
 
     const oversize = selected.some((file) => file.size > 2 * 1024 * 1024);
     if (oversize) {
       setError("单张图片大小不能超过 2MB");
+      event.target.value = "";
       return;
     }
 
-    setError("");
-    setNewFiles(selected);
+    setNewFiles((prev) => {
+      const currentTotal = existingImageUrls.length + prev.length;
+      if (currentTotal >= 5) {
+        setError("最多保留 5 张图片，请先删除后再添加");
+        return prev;
+      }
+
+      const available = 5 - currentTotal;
+      const toAdd = selected.slice(0, available);
+
+      if (selected.length > available) {
+        setError(`最多保留 5 张图片，已为你追加 ${toAdd.length} 张`);
+      } else {
+        setError("");
+      }
+
+      return [...prev, ...toAdd];
+    });
+
+    event.target.value = "";
   };
 
   const removeExistingImage = (index: number) => {
     setExistingImageUrls((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeNewImage = (target: File) => {
+    setNewFiles((prev) =>
+      prev.filter(
+        (file) =>
+          !(file.name === target.name && file.size === target.size && file.lastModified === target.lastModified)
+      )
+    );
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -103,7 +134,8 @@ export default function EditMallClient({ commodityId }: Props) {
         return;
       }
 
-      imageUrls = Array.isArray(uploadRes.data?.data?.urls) ? uploadRes.data.data.urls : [];
+      const uploadedUrls = Array.isArray(uploadRes.data?.data?.urls) ? uploadRes.data.data.urls : [];
+      imageUrls = [...existingImageUrls, ...uploadedUrls].slice(0, 5);
     }
 
     if (imageUrls.length === 0) {
@@ -187,28 +219,37 @@ export default function EditMallClient({ commodityId }: Props) {
         />
       </div>
 
-      {newPreviewUrls.length > 0 ? (
+      <div>
+        <p className="mb-2 text-xs text-zinc-500">当前保留图片（可删除）：</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {existingImageUrls.map((url, index) => (
+            <div key={url + index} className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt={`existing-${index + 1}`} className="h-24 w-full rounded-lg border border-zinc-200 object-cover" />
+              <button
+                type="button"
+                onClick={() => removeExistingImage(index)}
+                className="absolute right-1 top-1 rounded bg-red-500 px-1.5 py-0.5 text-xs text-white"
+              >
+                删除
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {newPreviewUrls.length > 0 && (
         <div>
-          <p className="mb-2 text-xs text-zinc-500">将使用以下新图片覆盖原图片：</p>
+          <p className="mb-2 text-xs text-zinc-500">待追加上传图片（{newPreviewUrls.length} 张）：</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {newPreviewUrls.map((url, index) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={url + index} src={url} alt={`new-preview-${index + 1}`} className="h-24 w-full rounded-lg border border-zinc-200 object-cover" />
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div>
-          <p className="mb-2 text-xs text-zinc-500">当前保留图片（可删除）：</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {existingImageUrls.map((url, index) => (
               <div key={url + index} className="relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt={`existing-${index + 1}`} className="h-24 w-full rounded-lg border border-zinc-200 object-cover" />
+                <img src={url} alt={`new-preview-${index + 1}`} className="h-24 w-full rounded-lg border border-zinc-200 object-cover" />
                 <button
                   type="button"
-                  onClick={() => removeExistingImage(index)}
-                  className="absolute right-1 top-1 rounded bg-red-500 px-1.5 py-0.5 text-xs text-white"
+                  onClick={() => removeNewImage(newFiles[index])}
+                  className="absolute right-1 top-1 rounded bg-black/70 px-1.5 py-0.5 text-xs text-white"
                 >
                   删除
                 </button>
