@@ -27,6 +27,8 @@
 在 .env 中配置：
 
 DATABASE_URL="mysql://user:password@localhost:3306/next_app"
+DEEPSEEK_API_KEY="your_deepseek_api_key"
+DEEPSEEK_MODEL="deepseek-chat"
 
 执行：
 

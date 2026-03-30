@@ -15,7 +15,7 @@ export default async function AiPage() {
       <AppNav username={user.displayName || user.nickname || user.username} />
       <div className="mx-auto max-w-5xl px-6 py-8">
         <h1 className="text-2xl font-semibold">AI 环保助手</h1>
-        <p className="mt-2 text-zinc-600">原 AI 页面已迁移为原生对话版（本地环保知识库答复）。</p>
+        <p className="mt-2 text-zinc-600">已接入 DeepSeek 后端接口，采用 SSE 流式输出回复。</p>
         <div className="mt-6">
           <AiClient />
         </div>
