@@ -11,10 +11,11 @@ type Props = {
 export default async function ImPage({ searchParams }: Props) {
   const sp = await searchParams;
   const userId = Number(sp.toUserId);
+  const initialToUserId = Number.isInteger(userId) && userId > 0 ? userId : undefined;
 
   return (
     <Suspense fallback={<main className="p-6">加载中...</main>}>
-      <ImClient initialToUserId={Number.isInteger(userId) ? userId : undefined} />
+      <ImClient initialToUserId={initialToUserId} />
     </Suspense>
   );
 }

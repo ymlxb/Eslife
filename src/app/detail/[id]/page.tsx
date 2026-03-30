@@ -39,14 +39,17 @@ export default function DetailPage() {
   const params = useParams<{ id: string }>();
   const search = useSearchParams();
   const router = useRouter();
-  const type = search.get("type") || "commodity";
+  const id = params?.id;
+  const type = search?.get("type") || "commodity";
   const [item, setItem] = useState<CommodityDetail | PostDetail | null>(null);
   const [error, setError] = useState("");
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
+    if (!id) return;
+
     const run = async () => {
-      const endpoint = type === "post" ? `/api/posts/${params.id}` : `/api/commodities/${params.id}`;
+      const endpoint = type === "post" ? `/api/posts/${id}` : `/api/commodities/${id}`;
       const res = await apiRequest<{ code: number; msg?: string; data?: CommodityDetail | PostDetail }>({
         url: endpoint,
         method: "GET",
@@ -63,11 +66,13 @@ export default function DetailPage() {
       }
     };
     run();
-  }, [params.id, type]);
+  }, [id, type]);
 
   const deleteCommodity = async () => {
+    if (!id) return;
+
     const res = await apiRequest<{ code: number; msg?: string }>({
-      url: `/api/commodities/${params.id}`,
+      url: `/api/commodities/${id}`,
       method: "DELETE",
     });
     if (!res.ok || res.data.code !== 0) {

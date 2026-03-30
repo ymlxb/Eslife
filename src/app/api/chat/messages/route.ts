@@ -12,8 +12,17 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const toUserId = Number(searchParams.get("toUserId"));
 
-  if (!Number.isInteger(toUserId)) {
+  if (!Number.isInteger(toUserId) || toUserId <= 0) {
     return NextResponse.json({ code: 1, msg: "缺少聊天对象" }, { status: 400 });
+  }
+
+  if (toUserId === me.id) {
+    return NextResponse.json({ code: 1, msg: "不能和自己聊天" }, { status: 400 });
+  }
+
+  const target = await prisma.user.findUnique({ where: { id: toUserId }, select: { id: true } });
+  if (!target) {
+    return NextResponse.json({ code: 1, msg: "聊天对象不存在" }, { status: 404 });
   }
 
   const list = await prisma.chatMessage.findMany({
@@ -39,8 +48,21 @@ export async function POST(request: Request) {
   const toUserId = Number(body?.toUserId);
   const content = typeof body?.content === "string" ? body.content.trim() : "";
 
-  if (!Number.isInteger(toUserId) || !content) {
+  if (!Number.isInteger(toUserId) || toUserId <= 0 || !content) {
     return NextResponse.json({ code: 1, msg: "参数不合法" }, { status: 400 });
+  }
+
+  if (toUserId === me.id) {
+    return NextResponse.json({ code: 1, msg: "不能给自己发消息" }, { status: 400 });
+  }
+
+  if (content.length > 2000) {
+    return NextResponse.json({ code: 1, msg: "消息长度不能超过2000" }, { status: 400 });
+  }
+
+  const target = await prisma.user.findUnique({ where: { id: toUserId }, select: { id: true } });
+  if (!target) {
+    return NextResponse.json({ code: 1, msg: "聊天对象不存在" }, { status: 404 });
   }
 
   const msg = await prisma.chatMessage.create({

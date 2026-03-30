@@ -24,6 +24,7 @@ const navItems = [
 
 export default function AppNav({ username, avatar }: Props) {
   const pathname = usePathname();
+  const currentPath = pathname || "";
 
   return (
     <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/95 backdrop-blur">
@@ -38,7 +39,7 @@ export default function AppNav({ username, avatar }: Props) {
 
           <nav className="hidden items-center gap-1 lg:flex">
             {navItems.map((item) => {
-              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const active = currentPath === item.href || currentPath.startsWith(`${item.href}/`);
               return (
                 <Link
                   key={item.href}

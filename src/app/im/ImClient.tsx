@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { io, type Socket } from "socket.io-client";
 
 import { apiRequest } from "@/lib/http";
 
@@ -25,65 +27,172 @@ type Props = {
 };
 
 export default function ImClient({ initialToUserId }: Props) {
+  const router = useRouter();
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [wsOnline, setWsOnline] = useState(false);
   const [meId, setMeId] = useState<number>(0);
   const [users, setUsers] = useState<UserItem[]>([]);
   const [activeUserId, setActiveUserId] = useState<number>(initialToUserId || 0);
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [content, setContent] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const socketRef = useRef<Socket | null>(null);
+  const meIdRef = useRef(0);
+  const activeUserIdRef = useRef(initialToUserId || 0);
 
   const activeUser = useMemo(() => users.find((u) => u.id === activeUserId) || null, [users, activeUserId]);
 
+  const appendMessage = (next: MessageItem) => {
+    setMessages((prev) => {
+      if (prev.some((item) => item.id === next.id)) {
+        return prev;
+      }
+      return [...prev, next];
+    });
+  };
+
+  useEffect(() => {
+    meIdRef.current = meId;
+  }, [meId]);
+
+  useEffect(() => {
+    activeUserIdRef.current = activeUserId;
+  }, [activeUserId]);
+
   useEffect(() => {
     const boot = async () => {
+      setError("");
       const meRes = await apiRequest<{ code: number; data?: { id: number } }>({
         url: "/api/auth/me",
         method: "GET",
       });
-      if (!meRes.ok || meRes.data.code !== 0 || !meRes.data.data) return;
+      if (!meRes.ok || meRes.data.code !== 0 || !meRes.data.data) {
+        setError("登录已失效，请重新登录");
+        router.push("/login");
+        return;
+      }
       setMeId(meRes.data.data.id);
 
       const usersRes = await apiRequest<{ code: number; data?: UserItem[] }>({
         url: "/api/users/list",
         method: "GET",
       });
-      if (usersRes.ok && usersRes.data.code === 0) {
-        setUsers(usersRes.data.data || []);
-        if (!activeUserId && usersRes.data.data?.length) {
-          setActiveUserId(usersRes.data.data[0].id);
-        }
+      if (!usersRes.ok || usersRes.data.code !== 0) {
+        setError("获取联系人失败");
+        return;
       }
+
+      const contactList = usersRes.data.data || [];
+      setUsers(contactList);
+      if (!activeUserId && contactList.length) {
+        setActiveUserId(contactList[0].id);
+      }
+
+      await apiRequest({ url: "/api/socket", method: "GET" });
+      const nextSocket = io(window.location.origin, {
+        path: "/api/socket",
+        transports: ["websocket"],
+        withCredentials: true,
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1200,
+      });
+
+      nextSocket.on("connect", () => {
+        setWsOnline(true);
+        setError("");
+      });
+
+      nextSocket.on("disconnect", () => {
+        setWsOnline(false);
+      });
+
+      nextSocket.on("connect_error", (err) => {
+        setWsOnline(false);
+        setError(`WebSocket 连接失败：${err.message || "未知错误"}`);
+      });
+
+      nextSocket.on("chat:new", (msg: MessageItem) => {
+        const currentMeId = meIdRef.current;
+        const currentActiveUserId = activeUserIdRef.current;
+        const inCurrentDialog =
+          (msg.fromUserId === currentMeId && msg.toUserId === currentActiveUserId) ||
+          (msg.fromUserId === currentActiveUserId && msg.toUserId === currentMeId);
+
+        if (inCurrentDialog) {
+          appendMessage(msg);
+        }
+      });
+
+      setSocket(nextSocket);
+      socketRef.current = nextSocket;
     };
-    boot();
-  }, [activeUserId]);
+    void boot();
+
+    return () => {
+      socketRef.current?.disconnect();
+      socketRef.current = null;
+    };
+    // 仅在初始化时拉取用户关系
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!activeUserId) return;
 
     const loadMessages = async () => {
+      setLoading(true);
       const res = await apiRequest<{ code: number; data?: MessageItem[] }>({
         url: `/api/chat/messages?toUserId=${activeUserId}`,
         method: "GET",
       });
       if (res.ok && res.data.code === 0) {
         setMessages(res.data.data || []);
+        setError("");
+      } else {
+        setError("获取消息失败");
       }
+      setLoading(false);
     };
 
-    loadMessages();
-    const timer = setInterval(loadMessages, 3000);
-    return () => clearInterval(timer);
+    void loadMessages();
+    return;
   }, [activeUserId]);
 
   const send = async () => {
-    if (!content.trim() || !activeUserId) return;
-    const res = await apiRequest<{ code: number; data?: MessageItem }>({
-      url: "/api/chat/messages",
-      method: "POST",
-      data: { toUserId: activeUserId, content: content.trim() },
-    });
-    if (res.ok && res.data.code === 0 && res.data.data) {
+    if (!content.trim() || !activeUserId || sending || !socket) return;
+    console.log('socket',socket);
+    
+    if (!socket.connected) {
+      setError("WebSocket 未连接，请稍后重试");
+      return;
+    }
+
+    setSending(true);
+    const sendingContent = content.trim();
+
+    const timeout = window.setTimeout(() => {
+      setSending(false);
+      setError("发送超时，请重试");
+    }, 5000);
+
+    socket.emit("chat:send", { toUserId: activeUserId, content: content.trim() }, (ack: { code: number; msg?: string }) => {
+      clearTimeout(timeout);
+      if (ack?.code !== 0) {
+        setError(ack?.msg || "发送失败，请稍后重试");
+        setSending(false);
+        return;
+      }
+
       setContent("");
-      setMessages((prev) => [...prev, res.data.data as MessageItem]);
+      setError("");
+      setSending(false);
+    });
+
+    if (!sendingContent) {
+      clearTimeout(timeout);
     }
   };
 
@@ -108,9 +217,13 @@ export default function ImClient({ initialToUserId }: Props) {
         <section className="flex flex-col rounded-2xl bg-white">
           <header className="border-b border-zinc-200 px-4 py-3 text-sm text-zinc-600">
             与 {activeUser ? activeUser.displayName || activeUser.nickname || activeUser.username : "-"} 聊天中
+            <span className={`ml-2 inline-flex rounded-full px-2 py-0.5 text-xs ${wsOnline ? "bg-emerald-100 text-emerald-700" : "bg-zinc-200 text-zinc-600"}`}>
+              {wsOnline ? "WebSocket在线" : "WebSocket离线"}
+            </span>
           </header>
 
           <div className="flex-1 space-y-3 overflow-y-auto p-4">
+            {loading && <p className="text-sm text-zinc-500">消息加载中...</p>}
             {messages.map((m) => {
               const mine = m.fromUserId === meId;
               return (
@@ -124,7 +237,8 @@ export default function ImClient({ initialToUserId }: Props) {
                 </div>
               );
             })}
-            {messages.length === 0 && <p className="text-sm text-zinc-500">暂无消息</p>}
+            {!loading && messages.length === 0 && <p className="text-sm text-zinc-500">暂无消息</p>}
+            {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
 
           <footer className="flex gap-2 border-t border-zinc-200 p-3">
@@ -132,12 +246,17 @@ export default function ImClient({ initialToUserId }: Props) {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") send();
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void send();
+                }
               }}
               placeholder="输入消息..."
               className="h-10 flex-1 rounded-lg border border-zinc-300 px-3"
             />
-            <button onClick={send} className="h-10 rounded-lg bg-black px-4 text-white">发送</button>
+            <button onClick={() => void send()} disabled={sending} className="h-10 rounded-lg bg-black px-4 text-white disabled:opacity-60">
+              {sending ? "发送中..." : "发送"}
+            </button>
           </footer>
         </section>
       </div>
