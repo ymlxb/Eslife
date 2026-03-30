@@ -86,7 +86,14 @@ export async function GET(request: Request) {
     };
   });
 
-  return NextResponse.json({ code: 0, data: formatted });
+  return NextResponse.json(
+    { code: 0, data: formatted },
+    {
+      headers: {
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+      },
+    },
+  );
 }
 
 export async function POST(request: Request) {

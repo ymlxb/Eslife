@@ -1,11 +1,15 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { apiRequest } from "@/lib/http";
-import WangEditor5 from "@/components/WangEditor5";
 import PlantLoading from "@/components/PlantLoading";
+
+const WangEditor5 = dynamic(() => import("@/components/WangEditor5"), {
+  loading: () => <PlantLoading compact text="编辑器加载中..." />,
+});
 
 type Category = { id: number; name: string };
 type PostItem = {

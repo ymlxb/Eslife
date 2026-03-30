@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { apiRequest } from "@/lib/http";
 import styles from "./trade.module.css";
@@ -53,6 +53,7 @@ export default function TradeClient({ initialList, initialTag, initialQuery }: P
   const [showMessageBox, setShowMessageBox] = useState(false);
   const [messageList, setMessageList] = useState<CommodityItem[]>([]);
   const [slideIndex, setSlideIndex] = useState(0);
+  const previewCacheRef = useRef<Record<string, CommodityItem[]>>({});
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -67,6 +68,11 @@ export default function TradeClient({ initialList, initialTag, initialQuery }: P
   }, [messageList.length]);
 
   const fetchByTag = async (tag: string, onlyPreview = false) => {
+    if (onlyPreview && previewCacheRef.current[tag]) {
+      setMessageList(previewCacheRef.current[tag]);
+      return;
+    }
+
     const query = tag === "闲置好物" ? "" : `?tag=${encodeURIComponent(tag)}`;
     const res = await apiRequest<{ code: number; data?: CommodityItem[] }>({
       url: `/api/commodities${query}`,
@@ -80,7 +86,9 @@ export default function TradeClient({ initialList, initialTag, initialQuery }: P
     }));
 
     if (onlyPreview) {
-      setMessageList(nextList.slice(0, 6));
+      const preview = nextList.slice(0, 6);
+      previewCacheRef.current[tag] = preview;
+      setMessageList(preview);
       return;
     }
 
@@ -144,8 +152,7 @@ export default function TradeClient({ initialList, initialTag, initialQuery }: P
             {messageList.map((item) => (
               <button key={item.id} className={styles.messageItem} onClick={() => router.push(`/detail/${item.id}`)}>
                 {item.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.imageUrl} alt={item.name} className={styles.messageImage} />
+                  <Image src={item.imageUrl} alt={item.name} width={520} height={360} className={styles.messageImage} sizes="(max-width: 1200px) 33vw, 16vw" />
                 ) : (
                   <div className={styles.messageImageEmpty}>暂无图</div>
                 )}
@@ -207,8 +214,7 @@ export default function TradeClient({ initialList, initialTag, initialQuery }: P
                 <article className={styles.showItemBox} key={item.id}>
                   <Link href={`/detail/${item.id}`}>
                     {item.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={item.imageUrl} alt={item.name} className={styles.showItemImage} />
+                      <Image src={item.imageUrl} alt={item.name} width={720} height={560} className={styles.showItemImage} sizes="(max-width: 640px) 100vw, (max-width: 1200px) 50vw, 25vw" />
                     ) : (
                       <div className={styles.showItemImageEmpty}>暂无图片</div>
                     )}

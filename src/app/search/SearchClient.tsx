@@ -1,8 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { apiRequest } from "@/lib/http";
 
@@ -21,6 +22,8 @@ type Props = {
   initialTag?: string;
   initialDay?: string;
   initialOrder?: string;
+  initialList?: CommodityItem[];
+  initialQuery?: string;
 };
 
 export default function SearchClient({
@@ -28,6 +31,8 @@ export default function SearchClient({
   initialTag = "",
   initialDay = "",
   initialOrder = "",
+  initialList = [],
+  initialQuery = "",
 }: Props) {
   const router = useRouter();
 
@@ -35,16 +40,25 @@ export default function SearchClient({
   const [tag, setTag] = useState(initialTag);
   const [day, setDay] = useState(initialDay);
   const [order, setOrder] = useState(initialOrder);
-  const [list, setList] = useState<CommodityItem[]>([]);
+  const [debouncedName, setDebouncedName] = useState(initialName);
+  const [list, setList] = useState<CommodityItem[]>(initialList);
+  const cacheRef = useRef<Record<string, CommodityItem[]>>(initialQuery ? { [initialQuery]: initialList } : {});
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedName(name);
+    }, 280);
+    return () => clearTimeout(timer);
+  }, [name]);
 
   const query = useMemo(() => {
     const p = new URLSearchParams();
-    if (name.trim()) p.set("name", name.trim());
+    if (debouncedName.trim()) p.set("name", debouncedName.trim());
     if (tag.trim()) p.set("tag", tag.trim());
     if (day) p.set("day", day);
     if (order) p.set("order", order);
     return p.toString();
-  }, [name, tag, day, order]);
+  }, [debouncedName, tag, day, order]);
 
   const searchUrl = useMemo(() => {
     const p = new URLSearchParams();
@@ -57,21 +71,35 @@ export default function SearchClient({
   }, [name, tag, day, order]);
 
   useEffect(() => {
+    let active = true;
+
     const run = async () => {
-      if (!name.trim() && !tag.trim()) {
+      if (!debouncedName.trim() && !tag.trim()) {
         setList([]);
         return;
       }
+
+      if (cacheRef.current[query]) {
+        setList(cacheRef.current[query]);
+        return;
+      }
+
       const res = await apiRequest<{ code: number; data?: CommodityItem[] }>({
         url: `/api/commodities?${query}`,
         method: "GET",
       });
-      if (res.ok && res.data.code === 0) {
-        setList(res.data.data || []);
+      if (active && res.ok && res.data.code === 0) {
+        const next = res.data.data || [];
+        cacheRef.current[query] = next;
+        setList(next);
       }
     };
-    run();
-  }, [query, name, tag]);
+    void run();
+
+    return () => {
+      active = false;
+    };
+  }, [query, debouncedName, tag]);
 
   return (
     <main className="min-h-screen bg-zinc-100 px-6 py-8">
@@ -123,8 +151,7 @@ export default function SearchClient({
             <article key={item.id} className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
               <Link href={`/detail/${item.id}`}>
                 {item.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.imageUrl} alt={item.name} className="h-48 w-full rounded-xl object-cover" />
+                  <Image src={item.imageUrl} alt={item.name} width={800} height={520} className="h-48 w-full rounded-xl object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
                 ) : (
                   <div className="flex h-48 items-center justify-center rounded-xl bg-zinc-100 text-zinc-400">暂无图片</div>
                 )}
