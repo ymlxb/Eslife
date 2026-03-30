@@ -8,7 +8,6 @@ const knownRoutes = new Set([
   "/home",
   "/brand",
   "/community",
-  "/about",
   "/trade",
   "/guide",
   "/editMall",

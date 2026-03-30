@@ -16,7 +16,6 @@ const navItems = [
   { href: "/brand", label: "可持续品牌" },
   { href: "/trade", label: "二手交易" },
   { href: "/community", label: "社区论坛" },
-  { href: "/about", label: "关于我们" },
   { href: "/im", label: "聊天室" },
   { href: "/ai", label: "AI助手" },
   { href: "/carbon", label: "碳足迹" },
