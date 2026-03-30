@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { apiRequest } from "@/lib/http";
+import PlantLoading from "@/components/PlantLoading";
 
 type UserItem = {
   id: number;
@@ -357,7 +358,7 @@ export default function ImClient({ initialToUserId }: Props) {
           </header>
 
           <div ref={messageListRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-gradient-to-b from-[#f7f0e4] to-[#fcfaf6] p-4">
-            {loading && <p className="text-sm text-[#8a7a6c]">消息加载中...</p>}
+            {loading && <PlantLoading compact text="消息萌发中..." />}
             {messages.map((m) => {
               const mine = m.fromUserId === meId;
               const sender = users.find((u) => u.id === m.fromUserId) || null;

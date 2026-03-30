@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 
 import { apiRequest } from "@/lib/http";
+import PlantLoading from "@/components/PlantLoading";
 
 type CommodityDetail = {
   id: number;
@@ -128,7 +129,11 @@ export default function DetailPage() {
   }
 
   if (!item) {
-    return <main className="p-8">加载中...</main>;
+    return (
+      <main className="min-h-screen bg-zinc-100 p-8">
+        <PlantLoading fullScreen text="详情页面培育中..." />
+      </main>
+    );
   }
 
   if (type === "post") {

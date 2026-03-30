@@ -40,6 +40,10 @@ const headerImages = [
   "/legacy/assets/home3-DjltnNds.png",
 ];
 
+function toSearchByTag(tag: string) {
+  return `/search?tag=${encodeURIComponent(tag)}`;
+}
+
 export default function TradeClient({ initialList, initialTag, initialQuery }: Props) {
   const router = useRouter();
 
@@ -105,7 +109,7 @@ export default function TradeClient({ initialList, initialTag, initialQuery }: P
           <div className={styles.navLinks}>
             {topList.map((item) => (
               <div key={item} className={styles.navigationBox} onMouseEnter={() => onTopHover(item)}>
-                <button type="button" className={styles.navText}>
+                <button type="button" className={styles.navText} onClick={() => router.push(toSearchByTag(item))}>
                   {item}
                 </button>
               </div>
@@ -159,7 +163,7 @@ export default function TradeClient({ initialList, initialTag, initialQuery }: P
             <div className={styles.contentsInner}>
               <div className={styles.contentsItem}>
                 {sideCategories.map((item) => (
-                  <Link key={item.name} href={`/search?name=${encodeURIComponent(item.name)}`} className={styles.contentsItemBox}>
+                  <Link key={item.name} href={toSearchByTag(item.name)} className={styles.contentsItemBox}>
                     <span>{item.icon}</span>
                     <span className={styles.contentsText}>{item.name}</span>
                     <span className={styles.rightArrow}>›</span>
@@ -185,7 +189,13 @@ export default function TradeClient({ initialList, initialTag, initialQuery }: P
                 <button
                   key={item}
                   className={`${styles.showItemNavBox} ${activeTag === item || (!activeTag && item === "闲置好物") ? styles.active : ""}`}
-                  onClick={() => fetchByTag(item)}
+                  onClick={() => {
+                    if (item === "闲置好物") {
+                      router.push("/search");
+                      return;
+                    }
+                    router.push(toSearchByTag(item));
+                  }}
                 >
                   <span>{item}</span>
                 </button>

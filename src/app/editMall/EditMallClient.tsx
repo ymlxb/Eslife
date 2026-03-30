@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { apiRequest } from "@/lib/http";
+import PlantLoading from "@/components/PlantLoading";
 
 type Props = { commodityId?: string };
 
@@ -171,7 +172,7 @@ export default function EditMallClient({ commodityId }: Props) {
   }
 
   if (!data) {
-    return <p className="text-sm text-zinc-500">加载中...</p>;
+    return <PlantLoading compact text="商品信息萌芽中..." />;
   }
 
   return (

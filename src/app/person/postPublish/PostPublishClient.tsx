@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { apiRequest } from "@/lib/http";
+import PlantLoading from "@/components/PlantLoading";
 
 type PostItem = {
   id: number;
@@ -121,7 +122,7 @@ export default function PostPublishClient() {
             {loading ? (
               <tr>
                 <td colSpan={5} className="px-2 py-8 text-center text-zinc-500">
-                  加载中...
+                  <PlantLoading compact text="帖子记录生长中..." />
                 </td>
               </tr>
             ) : list.length === 0 ? (

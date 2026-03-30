@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { apiRequest } from "@/lib/http";
 import WangEditor5 from "@/components/WangEditor5";
+import PlantLoading from "@/components/PlantLoading";
 
 type Category = { id: number; name: string };
 type PostItem = {
@@ -259,7 +260,11 @@ export default function CommunityClient({ currentUserId, categories, posts }: Pr
         </div>
       </div>
 
-      {loading && <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-500">帖子加载中...</div>}
+      {loading && (
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+          <PlantLoading compact text="帖子生长中..." />
+        </div>
+      )}
 
       {!loading &&
         items.map((post) => (

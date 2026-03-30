@@ -18,27 +18,47 @@ const topList = ["数码", "图书音像", "宠物花卉", "美容彩妆", "运�
 
 type Props = {
   initialName?: string;
+  initialTag?: string;
+  initialDay?: string;
+  initialOrder?: string;
 };
 
-export default function SearchClient({ initialName = "" }: Props) {
+export default function SearchClient({
+  initialName = "",
+  initialTag = "",
+  initialDay = "",
+  initialOrder = "",
+}: Props) {
   const router = useRouter();
 
   const [name, setName] = useState(initialName);
-  const [day, setDay] = useState("");
-  const [order, setOrder] = useState("");
+  const [tag, setTag] = useState(initialTag);
+  const [day, setDay] = useState(initialDay);
+  const [order, setOrder] = useState(initialOrder);
   const [list, setList] = useState<CommodityItem[]>([]);
 
   const query = useMemo(() => {
     const p = new URLSearchParams();
     if (name.trim()) p.set("name", name.trim());
+    if (tag.trim()) p.set("tag", tag.trim());
     if (day) p.set("day", day);
     if (order) p.set("order", order);
     return p.toString();
-  }, [name, day, order]);
+  }, [name, tag, day, order]);
+
+  const searchUrl = useMemo(() => {
+    const p = new URLSearchParams();
+    if (name.trim()) p.set("name", name.trim());
+    if (tag.trim()) p.set("tag", tag.trim());
+    if (day) p.set("day", day);
+    if (order) p.set("order", order);
+    const q = p.toString();
+    return q ? `/search?${q}` : "/search";
+  }, [name, tag, day, order]);
 
   useEffect(() => {
     const run = async () => {
-      if (!name.trim()) {
+      if (!name.trim() && !tag.trim()) {
         setList([]);
         return;
       }
@@ -51,7 +71,7 @@ export default function SearchClient({ initialName = "" }: Props) {
       }
     };
     run();
-  }, [query, name]);
+  }, [query, name, tag]);
 
   return (
     <main className="min-h-screen bg-zinc-100 px-6 py-8">
@@ -60,10 +80,22 @@ export default function SearchClient({ initialName = "" }: Props) {
           <div className="rounded-2xl bg-white p-4">
           <div className="mb-3 flex flex-wrap gap-2">
             {topList.map((item) => (
-              <button key={item} onClick={() => setName(item)} className="rounded-full bg-zinc-100 px-3 py-1 text-sm transition hover:bg-emerald-100 hover:text-emerald-700">
+              <button
+                key={item}
+                onClick={() => {
+                  setTag(item);
+                  setName("");
+                }}
+                className={`rounded-full px-3 py-1 text-sm transition ${tag === item ? "bg-emerald-500 text-white" : "bg-zinc-100 hover:bg-emerald-100 hover:text-emerald-700"}`}
+              >
                 {item}
               </button>
             ))}
+            {tag && (
+              <button onClick={() => setTag("")} className="rounded-full bg-zinc-200 px-3 py-1 text-sm text-zinc-700 transition hover:bg-zinc-300">
+                清除分类
+              </button>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -80,7 +112,7 @@ export default function SearchClient({ initialName = "" }: Props) {
               <option value="asc">从低到高</option>
               <option value="desc">从高到低</option>
             </select>
-            <button onClick={() => router.replace(`/search?name=${encodeURIComponent(name.trim())}`)} className="h-10 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 px-4 font-medium text-white transition hover:from-emerald-600 hover:to-teal-600">搜索</button>
+            <button onClick={() => router.replace(searchUrl)} className="h-10 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 px-4 font-medium text-white transition hover:from-emerald-600 hover:to-teal-600">搜索</button>
             <Link href="/trade" className="h-10 rounded-lg border border-zinc-300 px-4 leading-10 text-zinc-700 transition hover:bg-zinc-50">返回交易</Link>
           </div>
         </div>
@@ -102,7 +134,7 @@ export default function SearchClient({ initialName = "" }: Props) {
               </Link>
             </article>
           ))}
-          {name.trim() && list.length === 0 && (
+          {(name.trim() || tag.trim()) && list.length === 0 && (
             <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-6 text-sm text-zinc-500">未找到匹配商品</div>
           )}
         </div>
