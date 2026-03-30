@@ -24,7 +24,7 @@ export default function LegacyAppFrame() {
   const searchParams = useSearchParams();
 
   const hashPath = useMemo(() => {
-    const query = searchParams.toString();
+    const query = searchParams?.toString() || "";
     const path = pathname || "/login";
 
     if (!knownRoutes.has(path) && !path.startsWith("/detail/") && !path.startsWith("/person/")) {
