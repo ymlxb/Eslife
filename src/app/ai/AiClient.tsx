@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import VirtualList, { type VirtualListHandle } from "@/components/VirtualList";
 
 type Msg = { id: string; role: "user" | "assistant"; content: string; time: string };
 
@@ -120,7 +121,7 @@ function renderMarkdown(content: string): ReactNode {
 }
 
 export default function AiClient() {
-  const listRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<VirtualListHandle | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -136,10 +137,8 @@ export default function AiClient() {
   const canSend = useMemo(() => input.trim().length > 0, [input]);
 
   useEffect(() => {
-    const el = listRef.current;
-    if (!el) return;
     const raf = window.requestAnimationFrame(() => {
-      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      listRef.current?.scrollToEnd("smooth");
     });
     return () => window.cancelAnimationFrame(raf);
   }, [messages, loading]);
@@ -260,28 +259,37 @@ export default function AiClient() {
         </div>
       </div> */}
 
-      <div ref={listRef} className="relative min-h-0 flex-1 space-y-3 overflow-y-auto rounded-2xl border border-[#ddd1be] bg-[#f9f5ee]/90 p-4 md:p-5">
-        {messages.map((m) => (
-          <div key={m.id} className={`eco-float-in flex items-end gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[85%] rounded-2xl border px-3.5 py-2.5 text-sm leading-6 md:max-w-[78%] ${m.role === "user" ? "border-[#c3a58a] bg-[#e7d5c4] text-[#4a3b32]" : "border-[#ceddc8] bg-[#edf5ea] text-[#3f4f3c]"}`}>
-              {m.role === "assistant" ? (
-                <div>{renderMarkdown(m.content)}</div>
-              ) : (
-                <p className="whitespace-pre-wrap">{m.content}</p>
-              )}
-              <p className={`mt-1 text-[11px] ${m.role === "user" ? "text-[#7b6558]" : "text-[#6e7e67]"}`}>{m.time}</p>
-            </div>
-          </div>
-        ))}
-        {loading && (
-          <div className="flex justify-start">
-            <div className="flex items-center gap-2 rounded-xl border border-[#ceddc8] bg-[#edf5ea] px-3 py-2 text-xs text-[#5d7058]">
-              <span className="eco-breathe h-2 w-2 rounded-full bg-[#7da079]" />
-              AI 正在生成绿色建议...
+      <VirtualList
+        ref={listRef}
+        items={messages}
+        itemKey={(item) => item.id}
+        estimateSize={(item) => 72 + Math.min(280, item.content.length * 0.45)}
+        overscan={10}
+        className="relative min-h-0 flex-1 overflow-y-auto rounded-2xl border border-[#ddd1be] bg-[#f9f5ee]/90 p-4 md:p-5"
+        renderItem={(m) => (
+          <div className="eco-float-in pb-3">
+            <div className={`flex items-end gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[85%] rounded-2xl border px-3.5 py-2.5 text-sm leading-6 md:max-w-[78%] ${m.role === "user" ? "border-[#c3a58a] bg-[#e7d5c4] text-[#4a3b32]" : "border-[#ceddc8] bg-[#edf5ea] text-[#3f4f3c]"}`}>
+                {m.role === "assistant" ? (
+                  <div>{renderMarkdown(m.content)}</div>
+                ) : (
+                  <p className="whitespace-pre-wrap">{m.content}</p>
+                )}
+                <p className={`mt-1 text-[11px] ${m.role === "user" ? "text-[#7b6558]" : "text-[#6e7e67]"}`}>{m.time}</p>
+              </div>
             </div>
           </div>
         )}
-      </div>
+      />
+
+      {loading && (
+        <div className="mt-2 flex justify-start">
+          <div className="flex items-center gap-2 rounded-xl border border-[#ceddc8] bg-[#edf5ea] px-3 py-2 text-xs text-[#5d7058]">
+            <span className="eco-breathe h-2 w-2 rounded-full bg-[#7da079]" />
+            AI 正在生成绿色建议...
+          </div>
+        </div>
+      )}
 
       {error && <p className="mt-3 rounded-xl border border-[#ddc9b5] bg-[#f8eee4] px-3 py-2 text-sm text-[#8b5f42]">{error}</p>}
 

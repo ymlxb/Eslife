@@ -323,6 +323,17 @@
   gap: 0.9rem;
 }
 
+.virtualViewport {
+  height: min(70vh, 920px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+
+.virtualRow {
+  padding-bottom: 0.9rem;
+}
+
 .showItemBox {
   border: 1px solid transparent;
   padding: 0.5rem;

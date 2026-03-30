@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { apiRequest } from "@/lib/http";
 import PlantLoading from "@/components/PlantLoading";
+import VirtualList, { type VirtualListHandle } from "@/components/VirtualList";
 
 type UserItem = {
   id: number;
@@ -42,7 +43,7 @@ export default function ImClient({ initialToUserId }: Props) {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
-  const messageListRef = useRef<HTMLDivElement | null>(null);
+  const messageListRef = useRef<VirtualListHandle | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const meIdRef = useRef(0);
   const meUsernameRef = useRef("");
@@ -223,14 +224,8 @@ export default function ImClient({ initialToUserId }: Props) {
   }, [activeUserId]);
 
   useEffect(() => {
-    const container = messageListRef.current;
-    if (!container) return;
-
     const raf = window.requestAnimationFrame(() => {
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior: "smooth",
-      });
+      messageListRef.current?.scrollToEnd("smooth");
     });
 
     return () => window.cancelAnimationFrame(raf);
@@ -357,39 +352,48 @@ export default function ImClient({ initialToUserId }: Props) {
             {error && <p className="text-xs text-[#9a5f3f]">{error}</p>}
           </header>
 
-          <div ref={messageListRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-gradient-to-b from-[#f7f0e4] to-[#fcfaf6] p-4">
-            {loading && <PlantLoading compact text="消息萌发中..." />}
-            {messages.map((m) => {
+          <VirtualList
+            ref={messageListRef}
+            items={messages}
+            itemKey={(item) => item.id}
+            estimateSize={(item) => 64 + Math.min(180, item.content.length * 0.45)}
+            overscan={10}
+            className="min-h-0 flex-1 overflow-y-auto bg-gradient-to-b from-[#f7f0e4] to-[#fcfaf6] p-4"
+            empty={!loading ? <p className="text-sm text-[#8a7a6c]">暂无消息</p> : undefined}
+            renderItem={(m) => {
               const mine = m.fromUserId === meId;
               const sender = users.find((u) => u.id === m.fromUserId) || null;
               const avatarUrl = mine ? meAvatar : sender?.avatar || null;
               const fallbackText = mine
                 ? (meUsername || "U").slice(0, 1).toUpperCase()
                 : (sender?.displayName || sender?.nickname || sender?.username || "U").slice(0, 1).toUpperCase();
-              return (
-                <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                  <div className={`flex items-end gap-2 ${mine ? "flex-row-reverse" : "flex-row"}`}>
-                    <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-[#d8cab7] bg-[#f7efe2]">
-                      {avatarUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={avatarUrl} alt="avatar" className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-[#7c6e61]">{fallbackText}</div>
-                      )}
-                    </div>
 
-                    <div className={`max-w-[70%] rounded-2xl border px-3 py-2 text-sm ${mine ? "border-[#c3a58a] bg-[#e7d5c4] text-[#4a3b32]" : "border-[#ceddc8] bg-[#edf5ea] text-[#3f4f3c]"}`}>
-                      {m.content}
-                      <div className={`mt-1 text-[11px] ${mine ? "text-[#7b6558]" : "text-[#6e7e67]"}`}>
-                        {new Date(m.createdAt).toLocaleTimeString("zh-CN")}
+              return (
+                <div className="pb-3">
+                  <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                    <div className={`flex items-end gap-2 ${mine ? "flex-row-reverse" : "flex-row"}`}>
+                      <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-[#d8cab7] bg-[#f7efe2]">
+                        {avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={avatarUrl} alt="avatar" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-[#7c6e61]">{fallbackText}</div>
+                        )}
+                      </div>
+
+                      <div className={`max-w-[70%] rounded-2xl border px-3 py-2 text-sm ${mine ? "border-[#c3a58a] bg-[#e7d5c4] text-[#4a3b32]" : "border-[#ceddc8] bg-[#edf5ea] text-[#3f4f3c]"}`}>
+                        {m.content}
+                        <div className={`mt-1 text-[11px] ${mine ? "text-[#7b6558]" : "text-[#6e7e67]"}`}>
+                          {new Date(m.createdAt).toLocaleTimeString("zh-CN")}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               );
-            })}
-            {!loading && messages.length === 0 && <p className="text-sm text-[#8a7a6c]">暂无消息</p>}
-          </div>
+            }}
+          />
+          {loading && <div className="px-4 pb-3"><PlantLoading compact text="消息萌发中..." /></div>}
 
           <footer className="shrink-0 flex gap-2 border-t border-[#eadfce] p-3">
             <input

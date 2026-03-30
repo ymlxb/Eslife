@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { apiRequest } from "@/lib/http";
+import VirtualList from "@/components/VirtualList";
 import styles from "./trade.module.css";
 
 type CommodityItem = {
@@ -209,23 +210,29 @@ export default function TradeClient({ initialList, initialTag, initialQuery }: P
               ))}
             </div>
 
-            <div className={styles.showItemContain}>
-              {list.map((item) => (
-                <article className={styles.showItemBox} key={item.id}>
-                  <Link href={`/detail/${item.id}`}>
-                    {item.imageUrl ? (
-                      <Image src={item.imageUrl} alt={item.name} width={720} height={560} className={styles.showItemImage} sizes="(max-width: 640px) 100vw, (max-width: 1200px) 50vw, 25vw" />
-                    ) : (
-                      <div className={styles.showItemImageEmpty}>暂无图片</div>
-                    )}
-                    <span className={styles.showItemIntro}>{item.detail || item.name}</span>
-                    <span className={styles.showItemPrice}>¥{item.price}</span>
-                  </Link>
-                </article>
-              ))}
-            </div>
-
-            {list.length === 0 && <div className={styles.empty}>未查询到该商品</div>}
+            <VirtualList
+              items={list}
+              className={styles.virtualViewport}
+              itemKey={(item) => item.id}
+              estimateSize={360}
+              overscan={6}
+              empty={<div className={styles.empty}>未查询到该商品</div>}
+              renderItem={(item) => (
+                <div className={styles.virtualRow}>
+                  <article className={styles.showItemBox}>
+                    <Link href={`/detail/${item.id}`}>
+                      {item.imageUrl ? (
+                        <Image src={item.imageUrl} alt={item.name} width={720} height={560} className={styles.showItemImage} sizes="(max-width: 640px) 100vw, (max-width: 1200px) 50vw, 25vw" />
+                      ) : (
+                        <div className={styles.showItemImageEmpty}>暂无图片</div>
+                      )}
+                      <span className={styles.showItemIntro}>{item.detail || item.name}</span>
+                      <span className={styles.showItemPrice}>¥{item.price}</span>
+                    </Link>
+                  </article>
+                </div>
+              )}
+            />
           </div>
         </section>
       </main>
