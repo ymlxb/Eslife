@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { apiRequest } from "@/lib/http";
 import styles from "./trade.module.css";
 
 type CommodityItem = {
@@ -63,11 +64,13 @@ export default function TradeClient({ initialList, initialTag, initialQuery }: P
 
   const fetchByTag = async (tag: string, onlyPreview = false) => {
     const query = tag === "闲置好物" ? "" : `?tag=${encodeURIComponent(tag)}`;
-    const res = await fetch(`/api/commodities${query}`, { cache: "no-store" });
-    const data = await res.json();
-    if (!res.ok || data.code !== 0) return;
+    const res = await apiRequest<{ code: number; data?: CommodityItem[] }>({
+      url: `/api/commodities${query}`,
+      method: "GET",
+    });
+    if (!res.ok || res.data.code !== 0) return;
 
-    const nextList = (data.data || []).map((item: CommodityItem) => ({
+    const nextList = (res.data.data || []).map((item: CommodityItem) => ({
       ...item,
       price: String(item.price),
     }));

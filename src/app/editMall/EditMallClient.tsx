@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { apiRequest } from "@/lib/http";
+
 type Props = { commodityId?: string };
 
 type CommodityDetail = {
@@ -36,17 +38,19 @@ export default function EditMallClient({ commodityId }: Props) {
   useEffect(() => {
     if (!commodityId) return;
     const load = async () => {
-      const res = await fetch(`/api/commodities/${commodityId}`, { cache: "no-store" });
-      const json = await res.json();
-      if (!res.ok || json.code !== 0) {
-        setError(json.msg || "加载失败");
+      const res = await apiRequest<{ code: number; msg?: string; data?: CommodityDetail & { imageUrls?: unknown[] } }>({
+        url: `/api/commodities/${commodityId}`,
+        method: "GET",
+      });
+      if (!res.ok || res.data.code !== 0 || !res.data.data) {
+        setError(res.data.msg || "加载失败");
         return;
       }
-      setData(json.data);
-      const images = Array.isArray(json.data?.imageUrls)
-        ? json.data.imageUrls.filter((item: unknown) => typeof item === "string")
-        : json.data?.imageUrl
-          ? [json.data.imageUrl]
+      setData(res.data.data);
+      const images = Array.isArray(res.data.data?.imageUrls)
+        ? res.data.data.imageUrls.filter((item: unknown) => typeof item === "string") as string[]
+        : res.data.data?.imageUrl
+          ? [res.data.data.imageUrl]
           : [];
       setExistingImageUrls(images);
     };
@@ -87,19 +91,19 @@ export default function EditMallClient({ commodityId }: Props) {
       const uploadFormData = new FormData();
       newFiles.forEach((file) => uploadFormData.append("files", file));
 
-      const uploadRes = await fetch("/api/uploads/commodity", {
+      const uploadRes = await apiRequest<{ code: number; msg?: string; data?: { urls?: string[] } }>({
+        url: "/api/uploads/commodity",
         method: "POST",
-        body: uploadFormData,
+        data: uploadFormData,
       });
-      const uploadJson = await uploadRes.json();
 
-      if (!uploadRes.ok || uploadJson.code !== 0) {
+      if (!uploadRes.ok || uploadRes.data.code !== 0) {
         setLoading(false);
-        setError(uploadJson.msg || "图片上传失败");
+        setError(uploadRes.data.msg || "图片上传失败");
         return;
       }
 
-      imageUrls = Array.isArray(uploadJson?.data?.urls) ? uploadJson.data.urls : [];
+      imageUrls = Array.isArray(uploadRes.data?.data?.urls) ? uploadRes.data.data.urls : [];
     }
 
     if (imageUrls.length === 0) {
@@ -108,22 +112,21 @@ export default function EditMallClient({ commodityId }: Props) {
       return;
     }
 
-    const res = await fetch(`/api/commodities/${commodityId}`, {
+    const res = await apiRequest<{ code: number; msg?: string }>({
+      url: `/api/commodities/${commodityId}`,
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+      data: {
         name: data.name,
         detail: data.detail,
         tag: data.tag,
         price: data.price,
         imageUrls,
-      }),
+      },
     });
-    const json = await res.json();
     setLoading(false);
 
-    if (!res.ok || json.code !== 0) {
-      setError(json.msg || "修改失败");
+    if (!res.ok || res.data.code !== 0) {
+      setError(res.data.msg || "修改失败");
       return;
     }
 

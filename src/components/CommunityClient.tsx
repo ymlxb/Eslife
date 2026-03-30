@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { apiRequest } from "@/lib/http";
 import WangEditor5 from "@/components/WangEditor5";
 
 type Category = { id: number; name: string };
@@ -78,23 +79,23 @@ export default function CommunityClient({ currentUserId, categories, posts }: Pr
           params.set("title", keyword);
         }
 
-        const res = await fetch(`/api/posts?${params.toString()}`, {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        const data = (await res.json()) as {
+        const res = await apiRequest<{
           code: number;
           msg?: string;
           data?: { list: PostItem[]; total: number };
-        };
+        }>({
+          url: `/api/posts?${params.toString()}`,
+          method: "GET",
+          signal: controller.signal,
+        });
 
-        if (!res.ok || data.code !== 0) {
-          setError(data.msg || "加载帖子失败");
+        if (!res.ok || res.data.code !== 0) {
+          setError(res.data.msg || "加载帖子失败");
           return;
         }
 
-        setItems(data.data?.list || []);
-        setTotal(data.data?.total || 0);
+        setItems(res.data.data?.list || []);
+        setTotal(res.data.data?.total || 0);
       } catch {
         if (!controller.signal.aborted) {
           setError("加载帖子失败");
@@ -129,14 +130,13 @@ export default function CommunityClient({ currentUserId, categories, posts }: Pr
     }
 
     try {
-      const res = await fetch("/api/posts", {
+      const res = await apiRequest<{ code: number; msg?: string }>({
+        url: "/api/posts",
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, content, categoryId }),
+        data: { title, content, categoryId },
       });
-      const data = (await res.json()) as { code: number; msg?: string };
-      if (!res.ok || data.code !== 0) {
-        setError(data.msg || "发布失败");
+      if (!res.ok || res.data.code !== 0) {
+        setError(res.data.msg || "发布失败");
         return;
       }
       setShow(false);
@@ -156,10 +156,12 @@ export default function CommunityClient({ currentUserId, categories, posts }: Pr
       return;
     }
 
-    const res = await fetch(`/api/posts/${id}`, { method: "DELETE" });
-    const data = (await res.json()) as { code: number; msg?: string };
-    if (!res.ok || data.code !== 0) {
-      setError(data.msg || "删除失败");
+    const res = await apiRequest<{ code: number; msg?: string }>({
+      url: `/api/posts/${id}`,
+      method: "DELETE",
+    });
+    if (!res.ok || res.data.code !== 0) {
+      setError(res.data.msg || "删除失败");
       return;
     }
     setCurrentPage(1);

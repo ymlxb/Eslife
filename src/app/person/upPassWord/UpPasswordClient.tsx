@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { apiRequest } from "@/lib/http";
+
 export default function UpPasswordClient() {
   const router = useRouter();
   const [password, setPassword] = useState("");
@@ -21,16 +23,15 @@ export default function UpPasswordClient() {
     }
 
     setLoading(true);
-    const res = await fetch("/api/users/password", {
+    const res = await apiRequest<{ code: number; msg?: string }>({
+      url: "/api/users/password",
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password, newPassword }),
+      data: { password, newPassword },
     });
-    const data = await res.json();
     setLoading(false);
 
-    if (!res.ok || data.code !== 0) {
-      setError(data.msg || "修改失败");
+    if (!res.ok || res.data.code !== 0) {
+      setError(res.data.msg || "修改失败");
       return;
     }
 

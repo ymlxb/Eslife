@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { apiRequest } from "@/lib/http";
+
 type PostItem = {
   id: number;
   title: string;
@@ -33,16 +35,22 @@ export default function PostPublishClient() {
         params.set("title", keyword.trim());
       }
 
-      const res = await fetch(`/api/posts?${params.toString()}`, { cache: "no-store" });
-      const data = await res.json();
+      const res = await apiRequest<{
+        code: number;
+        msg?: string;
+        data?: { list?: PostItem[]; total?: number };
+      }>({
+        url: `/api/posts?${params.toString()}`,
+        method: "GET",
+      });
 
-      if (!res.ok || data.code !== 0) {
-        setError(data.msg || "获取帖子列表失败");
+      if (!res.ok || res.data.code !== 0) {
+        setError(res.data.msg || "获取帖子列表失败");
         return;
       }
 
-      setList(data.data?.list || []);
-      setTotal(data.data?.total || 0);
+      setList(res.data.data?.list || []);
+      setTotal(res.data.data?.total || 0);
     } finally {
       setLoading(false);
     }
@@ -62,10 +70,12 @@ export default function PostPublishClient() {
     const ok = window.confirm("确定要删除该帖子吗？");
     if (!ok) return;
 
-    const res = await fetch(`/api/posts/${id}`, { method: "DELETE" });
-    const data = await res.json();
-    if (!res.ok || data.code !== 0) {
-      setError(data.msg || "删除失败");
+    const res = await apiRequest<{ code: number; msg?: string }>({
+      url: `/api/posts/${id}`,
+      method: "DELETE",
+    });
+    if (!res.ok || res.data.code !== 0) {
+      setError(res.data.msg || "删除失败");
       return;
     }
 

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { apiRequest } from "@/lib/http";
+
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState("");
@@ -25,15 +27,14 @@ export default function LoginPage() {
 
     try {
       const url = isLogin ? "/api/auth/login" : "/api/auth/register";
-      const res = await fetch(url, {
+      const res = await apiRequest<{ code: number; msg?: string }>({
+        url,
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        data: { username, password },
       });
-      const data = await res.json();
 
-      if (!res.ok || data.code !== 0) {
-        setError(data.msg || "操作失败");
+      if (!res.ok || res.data.code !== 0) {
+        setError(res.data.msg || "操作失败");
         return;
       }
 

@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { apiRequest } from "@/lib/http";
+
 type Props = { currentAvatar: string };
 
 export default function UpAvatarClient({ currentAvatar }: Props) {
@@ -16,16 +18,15 @@ export default function UpAvatarClient({ currentAvatar }: Props) {
     setError("");
     setLoading(true);
 
-    const res = await fetch("/api/users/avatar", {
+    const res = await apiRequest<{ code: number; msg?: string }>({
+      url: "/api/users/avatar",
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ avatar }),
+      data: { avatar },
     });
-    const data = await res.json();
     setLoading(false);
 
-    if (!res.ok || data.code !== 0) {
-      setError(data.msg || "修改失败");
+    if (!res.ok || res.data.code !== 0) {
+      setError(res.data.msg || "修改失败");
       return;
     }
 

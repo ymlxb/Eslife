@@ -14,6 +14,7 @@
     "@prisma/client": "^5.22.0",
     "@wangeditor/editor": "^5.1.23",
     "@wangeditor/editor-for-react": "^1.0.6",
+    "axios": "^1.14.0",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.2",
     "mysql2": "^3.20.0",

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 
+import { apiRequest } from "@/lib/http";
+
 type CommodityDetail = {
   id: number;
   name: string;
@@ -45,16 +47,18 @@ export default function DetailPage() {
   useEffect(() => {
     const run = async () => {
       const endpoint = type === "post" ? `/api/posts/${params.id}` : `/api/commodities/${params.id}`;
-      const res = await fetch(endpoint, { cache: "no-store" });
-      const data = await res.json();
-      if (!res.ok || data.code !== 0) {
-        setError(data.msg || "加载失败");
+      const res = await apiRequest<{ code: number; msg?: string; data?: CommodityDetail | PostDetail }>({
+        url: endpoint,
+        method: "GET",
+      });
+      if (!res.ok || res.data.code !== 0) {
+        setError(res.data.msg || "加载失败");
         return;
       }
       if (type === "post") {
-        setItem((data.data as PostDetail) || null);
+        setItem((res.data.data as PostDetail) || null);
       } else {
-        setItem(data.data);
+        setItem((res.data.data as CommodityDetail) || null);
         setActiveImageIndex(0);
       }
     };
@@ -62,10 +66,12 @@ export default function DetailPage() {
   }, [params.id, type]);
 
   const deleteCommodity = async () => {
-    const res = await fetch(`/api/commodities/${params.id}`, { method: "DELETE" });
-    const data = await res.json();
-    if (!res.ok || data.code !== 0) {
-      setError(data.msg || "删除失败");
+    const res = await apiRequest<{ code: number; msg?: string }>({
+      url: `/api/commodities/${params.id}`,
+      method: "DELETE",
+    });
+    if (!res.ok || res.data.code !== 0) {
+      setError(res.data.msg || "删除失败");
       return;
     }
     router.push("/trade");

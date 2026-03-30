@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 
+import { apiRequest } from "@/lib/http";
+
 type Props = {
   className?: string;
 };
@@ -10,7 +12,7 @@ export default function LogoutButton({ className }: Props) {
   const router = useRouter();
 
   const onLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await apiRequest({ url: "/api/auth/logout", method: "POST" });
     router.push("/login");
     router.refresh();
   };

@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { apiRequest } from "@/lib/http";
+
 type Props = {
   username: string;
   nickname?: string | null;
@@ -27,20 +29,19 @@ export default function EditUserInfoForm(props: Props) {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/users/me", {
+      const res = await apiRequest<{ code: number; msg?: string }>({
+        url: "/api/users/me",
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        data: {
           nickname,
           gender: gender === -1 ? null : gender,
           mobile,
           email,
           address,
-        }),
+        },
       });
-      const data = await res.json();
-      if (!res.ok || data.code !== 0) {
-        setError(data.msg || "修改失败");
+      if (!res.ok || res.data.code !== 0) {
+        setError(res.data.msg || "修改失败");
         return;
       }
       router.push("/person/userInfo");

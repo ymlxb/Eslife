@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { apiRequest } from "@/lib/http";
+
 type CommodityItem = {
   id: number;
   name: string;
@@ -40,10 +42,12 @@ export default function SearchClient({ initialName = "" }: Props) {
         setList([]);
         return;
       }
-      const res = await fetch(`/api/commodities?${query}`, { cache: "no-store" });
-      const data = await res.json();
-      if (res.ok && data.code === 0) {
-        setList(data.data || []);
+      const res = await apiRequest<{ code: number; data?: CommodityItem[] }>({
+        url: `/api/commodities?${query}`,
+        method: "GET",
+      });
+      if (res.ok && res.data.code === 0) {
+        setList(res.data.data || []);
       }
     };
     run();

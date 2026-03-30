@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { apiRequest } from "@/lib/http";
+
 export default function PublishCommodityForm() {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -61,27 +63,27 @@ export default function PublishCommodityForm() {
       const uploadFormData = new FormData();
       files.forEach((file) => uploadFormData.append("files", file));
 
-      const uploadRes = await fetch("/api/uploads/commodity", {
+      const uploadRes = await apiRequest<{ code: number; msg?: string; data?: { urls?: string[] } }>({
+        url: "/api/uploads/commodity",
         method: "POST",
-        body: uploadFormData,
+        data: uploadFormData,
       });
-      const uploadData = await uploadRes.json();
 
-      if (!uploadRes.ok || uploadData.code !== 0) {
-        setError(uploadData.msg || "图片上传失败");
+      if (!uploadRes.ok || uploadRes.data.code !== 0) {
+        setError(uploadRes.data.msg || "图片上传失败");
         return;
       }
 
-      const imageUrls = Array.isArray(uploadData?.data?.urls) ? uploadData.data.urls : [];
+      const imageUrls = Array.isArray(uploadRes.data?.data?.urls) ? uploadRes.data.data.urls : [];
       if (imageUrls.length === 0) {
         setError("图片上传失败，请重试");
         return;
       }
 
-      const res = await fetch("/api/commodities", {
+      const res = await apiRequest<{ code: number; msg?: string }>({
+        url: "/api/commodities",
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        data: {
           name,
           price: Number(price),
           tag,
@@ -89,12 +91,11 @@ export default function PublishCommodityForm() {
           mobile,
           email,
           imageUrls,
-        }),
+        },
       });
-      const data = await res.json();
 
-      if (!res.ok || data.code !== 0) {
-        setError(data.msg || "发布失败");
+      if (!res.ok || res.data.code !== 0) {
+        setError(res.data.msg || "发布失败");
         return;
       }
 

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { apiRequest } from "@/lib/http";
+
 type Address = {
   id: number;
   addressee: string;
@@ -20,9 +22,11 @@ export default function UpAddressClient() {
   const [form, setForm] = useState({ addressee: "", mobile: "", province: "", city: "", fullAddress: "" });
 
   const load = async () => {
-    const res = await fetch("/api/addresses", { cache: "no-store" });
-    const data = await res.json();
-    if (res.ok && data.code === 0) setList(data.data || []);
+    const res = await apiRequest<{ code: number; data?: Address[] }>({
+      url: "/api/addresses",
+      method: "GET",
+    });
+    if (res.ok && res.data.code === 0) setList(res.data.data || []);
   };
 
   useEffect(() => {
@@ -35,14 +39,13 @@ export default function UpAddressClient() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    const res = await fetch("/api/addresses", {
+    const res = await apiRequest<{ code: number; msg?: string }>({
+      url: "/api/addresses",
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      data: form,
     });
-    const data = await res.json();
-    if (!res.ok || data.code !== 0) {
-      setError(data.msg || "添加失败");
+    if (!res.ok || res.data.code !== 0) {
+      setError(res.data.msg || "添加失败");
       return;
     }
     setShow(false);
@@ -53,10 +56,12 @@ export default function UpAddressClient() {
   const remove = async (id: number) => {
     const ok = window.confirm("确定删除该地址吗？");
     if (!ok) return;
-    const res = await fetch(`/api/addresses/${id}`, { method: "DELETE" });
-    const data = await res.json();
-    if (!res.ok || data.code !== 0) {
-      setError(data.msg || "删除失败");
+    const res = await apiRequest<{ code: number; msg?: string }>({
+      url: `/api/addresses/${id}`,
+      method: "DELETE",
+    });
+    if (!res.ok || res.data.code !== 0) {
+      setError(res.data.msg || "删除失败");
       return;
     }
     load();

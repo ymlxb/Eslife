@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { apiRequest } from "@/lib/http";
+
 type UserItem = {
   id: number;
   username: string;
@@ -33,17 +35,21 @@ export default function ImClient({ initialToUserId }: Props) {
 
   useEffect(() => {
     const boot = async () => {
-      const meRes = await fetch("/api/auth/me", { cache: "no-store" });
-      const meData = await meRes.json();
-      if (!meRes.ok || meData.code !== 0) return;
-      setMeId(meData.data.id);
+      const meRes = await apiRequest<{ code: number; data?: { id: number } }>({
+        url: "/api/auth/me",
+        method: "GET",
+      });
+      if (!meRes.ok || meRes.data.code !== 0 || !meRes.data.data) return;
+      setMeId(meRes.data.data.id);
 
-      const usersRes = await fetch("/api/users/list", { cache: "no-store" });
-      const usersData = await usersRes.json();
-      if (usersRes.ok && usersData.code === 0) {
-        setUsers(usersData.data || []);
-        if (!activeUserId && usersData.data?.length > 0) {
-          setActiveUserId(usersData.data[0].id);
+      const usersRes = await apiRequest<{ code: number; data?: UserItem[] }>({
+        url: "/api/users/list",
+        method: "GET",
+      });
+      if (usersRes.ok && usersRes.data.code === 0) {
+        setUsers(usersRes.data.data || []);
+        if (!activeUserId && usersRes.data.data?.length) {
+          setActiveUserId(usersRes.data.data[0].id);
         }
       }
     };
@@ -54,10 +60,12 @@ export default function ImClient({ initialToUserId }: Props) {
     if (!activeUserId) return;
 
     const loadMessages = async () => {
-      const res = await fetch(`/api/chat/messages?toUserId=${activeUserId}`, { cache: "no-store" });
-      const data = await res.json();
-      if (res.ok && data.code === 0) {
-        setMessages(data.data || []);
+      const res = await apiRequest<{ code: number; data?: MessageItem[] }>({
+        url: `/api/chat/messages?toUserId=${activeUserId}`,
+        method: "GET",
+      });
+      if (res.ok && res.data.code === 0) {
+        setMessages(res.data.data || []);
       }
     };
 
@@ -68,15 +76,14 @@ export default function ImClient({ initialToUserId }: Props) {
 
   const send = async () => {
     if (!content.trim() || !activeUserId) return;
-    const res = await fetch("/api/chat/messages", {
+    const res = await apiRequest<{ code: number; data?: MessageItem }>({
+      url: "/api/chat/messages",
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ toUserId: activeUserId, content: content.trim() }),
+      data: { toUserId: activeUserId, content: content.trim() },
     });
-    const data = await res.json();
-    if (res.ok && data.code === 0) {
+    if (res.ok && res.data.code === 0 && res.data.data) {
       setContent("");
-      setMessages((prev) => [...prev, data.data]);
+      setMessages((prev) => [...prev, res.data.data as MessageItem]);
     }
   };
 
