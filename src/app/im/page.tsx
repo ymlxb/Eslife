@@ -14,7 +14,7 @@ export default async function ImPage({ searchParams }: Props) {
   const initialToUserId = Number.isInteger(userId) && userId > 0 ? userId : undefined;
 
   return (
-    <Suspense fallback={<main className="p-6">加载中...</main>}>
+    <Suspense fallback={<main className="min-h-screen bg-[#f4efe6] p-6 text-[#6f6257]">加载中...</main>}>
       <ImClient initialToUserId={initialToUserId} />
     </Suspense>
   );

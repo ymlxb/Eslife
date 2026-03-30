@@ -52,39 +52,39 @@ export default function EditUserInfoForm(props: Props) {
   };
 
   return (
-    <form onSubmit={submit} className="space-y-4 rounded-2xl bg-white p-6 shadow-sm">
+    <form onSubmit={submit} className="space-y-4 rounded-2xl border border-[#e4d8c8] bg-[#fcfaf6] p-6 shadow-sm">
       <div>
-        <label className="mb-1 block text-sm text-zinc-500">用户名</label>
-        <input value={props.username} disabled className="w-full rounded-lg border border-zinc-300 px-3 py-2" />
+        <label className="mb-1 block text-sm text-[#7d6f63]">用户名</label>
+        <input value={props.username} disabled className="w-full rounded-lg border border-[#d9cab7] bg-[#f3ecdf] px-3 py-2 text-[#8b7d71]" />
       </div>
       <div>
-        <label className="mb-1 block text-sm text-zinc-500">昵称</label>
-        <input value={nickname} onChange={(e) => setNickname(e.target.value)} className="w-full rounded-lg border border-zinc-300 px-3 py-2" />
+        <label className="mb-1 block text-sm text-[#7d6f63]">昵称</label>
+        <input value={nickname} onChange={(e) => setNickname(e.target.value)} className="w-full rounded-lg border border-[#d9cab7] bg-white px-3 py-2 text-[#4f4137]" />
       </div>
       <div>
-        <label className="mb-1 block text-sm text-zinc-500">性别</label>
-        <select value={gender} onChange={(e) => setGender(Number(e.target.value))} className="w-full rounded-lg border border-zinc-300 px-3 py-2">
+        <label className="mb-1 block text-sm text-[#7d6f63]">性别</label>
+        <select value={gender} onChange={(e) => setGender(Number(e.target.value))} className="w-full rounded-lg border border-[#d9cab7] bg-white px-3 py-2 text-[#4f4137]">
           <option value={-1}>未设置</option>
           <option value={0}>男</option>
           <option value={1}>女</option>
         </select>
       </div>
       <div>
-        <label className="mb-1 block text-sm text-zinc-500">电话</label>
-        <input value={mobile} onChange={(e) => setMobile(e.target.value)} className="w-full rounded-lg border border-zinc-300 px-3 py-2" />
+        <label className="mb-1 block text-sm text-[#7d6f63]">电话</label>
+        <input value={mobile} onChange={(e) => setMobile(e.target.value)} className="w-full rounded-lg border border-[#d9cab7] bg-white px-3 py-2 text-[#4f4137]" />
       </div>
       <div>
-        <label className="mb-1 block text-sm text-zinc-500">邮箱</label>
-        <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-zinc-300 px-3 py-2" />
+        <label className="mb-1 block text-sm text-[#7d6f63]">邮箱</label>
+        <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-[#d9cab7] bg-white px-3 py-2 text-[#4f4137]" />
       </div>
       <div>
-        <label className="mb-1 block text-sm text-zinc-500">地址</label>
-        <input value={address} onChange={(e) => setAddress(e.target.value)} className="w-full rounded-lg border border-zinc-300 px-3 py-2" />
+        <label className="mb-1 block text-sm text-[#7d6f63]">地址</label>
+        <input value={address} onChange={(e) => setAddress(e.target.value)} className="w-full rounded-lg border border-[#d9cab7] bg-white px-3 py-2 text-[#4f4137]" />
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="rounded-lg border border-[#e5c8b4] bg-[#f9eee5] px-3 py-2 text-sm text-[#9a5f3f]">{error}</p>}
       <div className="flex gap-2">
-        <button type="button" onClick={() => router.push("/person/userInfo")} className="rounded-lg border border-zinc-300 px-4 py-2">取消</button>
-        <button disabled={loading} className="rounded-lg bg-black px-4 py-2 text-white disabled:opacity-60">{loading ? "提交中..." : "提交"}</button>
+        <button type="button" onClick={() => router.push("/person/userInfo")} className="rounded-lg border border-[#d1c1ab] bg-white px-4 py-2 text-[#5f4a3f]">取消</button>
+        <button disabled={loading} className="rounded-lg bg-[#5f7b57] px-4 py-2 text-white disabled:opacity-60">{loading ? "提交中..." : "提交"}</button>
       </div>
     </form>
   );
