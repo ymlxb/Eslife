@@ -67,7 +67,31 @@ export async function POST(request: Request) {
 
   if (!upstream.ok || !upstream.body) {
     const text = await upstream.text().catch(() => "");
-    return NextResponse.json({ code: 1, msg: text || "DeepSeek 请求失败" }, { status: 500 });
+    let msg = "DeepSeek 请求失败";
+
+    try {
+      const parsed = JSON.parse(text) as { error?: { message?: string } };
+      const upstreamMsg = parsed?.error?.message?.trim();
+      if (upstreamMsg) {
+        msg = upstreamMsg;
+      }
+    } catch {
+      if (text.trim()) {
+        msg = text.trim();
+      }
+    }
+
+    if (/insufficient\s*balance/i.test(msg)) {
+      msg = "DeepSeek 余额不足，请充值后重试或更换可用的 API Key。";
+    }
+
+    return NextResponse.json(
+      {
+        code: 1,
+        msg,
+      },
+      { status: upstream.status || 500 }
+    );
   }
 
   return new Response(upstream.body, {

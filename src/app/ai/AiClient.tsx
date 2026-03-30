@@ -14,7 +14,7 @@ export default function AiClient() {
       id: "welcome",
       role: "assistant",
       content: "你好！我是你的 AI 环保助手，欢迎咨询垃圾分类、节能减排和低碳生活问题。",
-      time: new Date().toLocaleTimeString("zh-CN"),
+      time: "刚刚",
     },
   ]);
 
@@ -61,8 +61,17 @@ export default function AiClient() {
       });
 
       if (!res.ok || !res.body) {
-        const text = await res.text().catch(() => "");
-        throw new Error(text || "AI 请求失败");
+        const text = await res.text().catch(() => '');
+        let msg = 'AI 请求失败';
+        try {
+          const parsed = JSON.parse(text) as { msg?: string; error?: { message?: string } };
+          msg = parsed?.msg || parsed?.error?.message || msg;
+        } catch {
+          if (text.trim()) {
+            msg = text.trim();
+          }
+        }
+        throw new Error(msg);
       }
 
       const reader = res.body.getReader();
