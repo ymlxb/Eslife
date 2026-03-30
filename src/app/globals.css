@@ -25,3 +25,57 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.eco-paper {
+  background-image:
+    radial-gradient(rgba(130, 109, 90, 0.08) 0.6px, transparent 0.6px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.08));
+  background-size: 12px 12px, 100% 100%;
+}
+
+.eco-float-in {
+  animation: ecoFloatIn 0.35s ease-out both;
+}
+
+.eco-breathe {
+  animation: ecoBreathe 1.8s ease-in-out infinite;
+}
+
+.eco-flow {
+  animation: ecoFlow 1.2s ease-in-out infinite;
+}
+
+@keyframes ecoFloatIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ecoBreathe {
+  0%,
+  100% {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+}
+
+@keyframes ecoFlow {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
