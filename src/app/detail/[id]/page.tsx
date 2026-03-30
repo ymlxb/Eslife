@@ -44,7 +44,7 @@ export default function DetailPage() {
 
   useEffect(() => {
     const run = async () => {
-      const endpoint = type === "post" ? `/api/posts?postId=${params.id}` : `/api/commodities/${params.id}`;
+      const endpoint = type === "post" ? `/api/posts/${params.id}` : `/api/commodities/${params.id}`;
       const res = await fetch(endpoint, { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || data.code !== 0) {
@@ -52,8 +52,7 @@ export default function DetailPage() {
         return;
       }
       if (type === "post") {
-        const matched = (data.data || []).find((p: PostDetail) => String(p.id) === params.id);
-        setItem(matched || null);
+        setItem((data.data as PostDetail) || null);
       } else {
         setItem(data.data);
         setActiveImageIndex(0);
@@ -84,15 +83,27 @@ export default function DetailPage() {
   if (type === "post") {
     const post = item as PostDetail;
     return (
-      <main className="mx-auto max-w-4xl p-6">
-        <button onClick={() => router.back()} className="mb-4 rounded border px-3 py-1">返回</button>
-        <article className="rounded-2xl bg-white p-6 shadow-sm">
-          <h1 className="text-2xl font-semibold">{post.title}</h1>
-          <p className="mt-2 text-sm text-zinc-500">
-            {post.category.name} · {post.user.displayName || post.user.nickname || post.user.username} · {new Date(post.createdAt).toLocaleString("zh-CN")}
-          </p>
-          <div className="mt-6 whitespace-pre-wrap leading-7 text-zinc-700">{post.content}</div>
-        </article>
+      <main className="min-h-screen bg-zinc-100">
+        <div className="mx-auto max-w-4xl p-6">
+          <button
+            onClick={() => router.back()}
+            className="mb-4 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 transition hover:bg-zinc-50"
+          >
+            返回
+          </button>
+
+          <section className="overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-500 via-green-500 to-cyan-500 p-8 text-white shadow-lg">
+            <span className="inline-flex rounded-full bg-white/20 px-3 py-1 text-xs tracking-wide">{post.category.name}</span>
+            <h1 className="mt-4 text-3xl font-semibold leading-tight">{post.title}</h1>
+            <p className="mt-3 text-sm text-emerald-50">
+              {post.user.displayName || post.user.nickname || post.user.username} · {new Date(post.createdAt).toLocaleString("zh-CN")}
+            </p>
+          </section>
+
+          <article className="mt-5 rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm">
+            <div className="prose prose-zinc max-w-none leading-8 text-zinc-700" dangerouslySetInnerHTML={{ __html: post.content }} />
+          </article>
+        </div>
       </main>
     );
   }

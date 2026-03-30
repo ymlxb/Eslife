@@ -15,7 +15,13 @@ type PostItem = {
   content: string;
   createdAt: Date;
   category: Category;
-  user: { id: number; username: string; displayName: string | null; nickname: string | null };
+  user: {
+    id: number;
+    username: string;
+    displayName: string | null;
+    nickname: string | null;
+    avatar: string | null;
+  };
 };
 
 export default async function CommunityPage() {
@@ -37,7 +43,7 @@ export default async function CommunityPage() {
     orderBy: { createdAt: "desc" },
     include: {
       category: { select: { id: true, name: true } },
-      user: { select: { id: true, username: true, displayName: true, nickname: true } },
+      user: { select: { id: true, username: true, displayName: true, nickname: true, avatar: true } },
     },
   })) as PostItem[];
 
@@ -45,10 +51,10 @@ export default async function CommunityPage() {
 
   return (
     <main className="min-h-screen bg-zinc-100">
-      <AppNav username={user.displayName || user.nickname || user.username} />
+      <AppNav username={user.displayName || user.nickname || user.username} avatar={user.avatar} />
       <div className="mx-auto max-w-5xl px-6 py-8">
         <h1 className="text-2xl font-semibold">绿色生活社区</h1>
-        <p className="mt-2 text-zinc-600">原 React 的社区页已迁移为 Next.js 原生版本。</p>
+        <p className="mt-2 text-zinc-600">分享可持续生活经验，共建更美好的低碳家园。</p>
         <div className="mt-6">
           <CommunityClient currentUserId={user.id} categories={categories as Category[]} posts={payload} />
         </div>

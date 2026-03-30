@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import sanitizeHtml from "sanitize-html";
 
 import { getCurrentUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
@@ -13,9 +14,12 @@ export async function GET(request: Request) {
   const title = searchParams.get("title")?.trim();
   const mine = searchParams.get("mine") === "1";
 
+  const hasCategoryFilter = Number.isInteger(categoryId) && categoryId > 0;
+  const hasPostIdFilter = Number.isInteger(postId) && postId > 0;
+
   const where = {
-    ...(Number.isInteger(categoryId) ? { categoryId } : {}),
-    ...(Number.isInteger(postId) ? { id: postId } : {}),
+    ...(hasCategoryFilter ? { categoryId } : {}),
+    ...(hasPostIdFilter ? { id: postId } : {}),
     ...(title ? { title: { contains: title } } : {}),
     ...(mine && user ? { userId: user.id } : {}),
   };
@@ -76,18 +80,43 @@ export async function POST(request: Request) {
 
   const body = await request.json();
   const title = typeof body?.title === "string" ? body.title.trim() : "";
-  const content = typeof body?.content === "string" ? body.content.trim() : "";
+  const rawContent = typeof body?.content === "string" ? body.content.trim() : "";
   const categoryId = Number(body?.categoryId);
 
-  if (!title || !content || !Number.isInteger(categoryId)) {
+  const content = sanitizeHtml(rawContent, {
+    allowedTags: ["p", "br", "strong", "b", "em", "i", "u", "ul", "ol", "li", "h1", "h2", "h3", "blockquote", "a"],
+    allowedAttributes: {
+      a: ["href", "target", "rel"],
+    },
+    allowedSchemes: ["http", "https", "mailto"],
+  }).trim();
+
+  const plainText = sanitizeHtml(content, { allowedTags: [], allowedAttributes: {} })
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!title || !content || !plainText || !Number.isInteger(categoryId) || categoryId <= 0) {
     return NextResponse.json({ code: 1, msg: "参数不合法" }, { status: 400 });
+  }
+
+  if (plainText.length < 5) {
+    return NextResponse.json({ code: 1, msg: "正文至少5个字" }, { status: 400 });
+  }
+
+  if (title.length > 100) {
+    return NextResponse.json({ code: 1, msg: "标题不能超过100字" }, { status: 400 });
+  }
+
+  const category = await prisma.postCategory.findUnique({ where: { id: categoryId } });
+  if (!category) {
+    return NextResponse.json({ code: 1, msg: "分类不存在" }, { status: 400 });
   }
 
   const post = await prisma.post.create({
     data: {
       title,
       content,
-      excerpt: content.slice(0, 120),
+      excerpt: plainText.slice(0, 120),
       categoryId,
       userId: user.id,
     },
