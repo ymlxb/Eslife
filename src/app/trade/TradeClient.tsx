@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { apiRequest } from "@/lib/http";
-import VirtualList from "@/components/VirtualList";
 import styles from "./trade.module.css";
 
 type CommodityItem = {
@@ -153,7 +152,7 @@ export default function TradeClient({ initialList, initialTag, initialQuery }: P
             {messageList.map((item) => (
               <button key={item.id} className={styles.messageItem} onClick={() => router.push(`/detail/${item.id}`)}>
                 {item.imageUrl ? (
-                  <Image src={item.imageUrl} alt={item.name} width={520} height={360} className={styles.messageImage} sizes="(max-width: 1200px) 33vw, 16vw" />
+                  <Image src={item.imageUrl} alt={item.name} width={520} height={360} className={styles.messageImage} sizes="(max-width: 1200px) 33vw, 16vw" loading="lazy" />
                 ) : (
                   <div className={styles.messageImageEmpty}>暂无图</div>
                 )}
@@ -182,7 +181,7 @@ export default function TradeClient({ initialList, initialTag, initialQuery }: P
               <div className={styles.contentsImages}>
                 {headerImages.map((url, index) => (
                   <div key={url} className={`${styles.slide} ${index === slideIndex ? styles.slideActive : ""}`}>
-                    <Image src={url} alt={`banner-${index + 1}`} fill className={styles.slideImage} sizes="(max-width: 1024px) 100vw, 70vw" />
+                    <Image src={url} alt={`banner-${index + 1}`} fill className={styles.slideImage} sizes="(max-width: 1024px) 100vw, 70vw" priority={index === 0} loading={index === 0 ? "eager" : "lazy"} />
                   </div>
                 ))}
               </div>
@@ -210,29 +209,23 @@ export default function TradeClient({ initialList, initialTag, initialQuery }: P
               ))}
             </div>
 
-            <VirtualList
-              items={list}
-              className={styles.virtualViewport}
-              itemKey={(item) => item.id}
-              estimateSize={360}
-              overscan={6}
-              empty={<div className={styles.empty}>未查询到该商品</div>}
-              renderItem={(item) => (
-                <div className={styles.virtualRow}>
-                  <article className={styles.showItemBox}>
-                    <Link href={`/detail/${item.id}`}>
-                      {item.imageUrl ? (
-                        <Image src={item.imageUrl} alt={item.name} width={720} height={560} className={styles.showItemImage} sizes="(max-width: 640px) 100vw, (max-width: 1200px) 50vw, 25vw" />
-                      ) : (
-                        <div className={styles.showItemImageEmpty}>暂无图片</div>
-                      )}
-                      <span className={styles.showItemIntro}>{item.detail || item.name}</span>
-                      <span className={styles.showItemPrice}>¥{item.price}</span>
-                    </Link>
-                  </article>
-                </div>
-              )}
-            />
+            <div className={styles.showItemContain}>
+              {list.map((item) => (
+                <article className={styles.showItemBox} key={item.id}>
+                  <Link href={`/detail/${item.id}`}>
+                    {item.imageUrl ? (
+                      <Image src={item.imageUrl} alt={item.name} width={720} height={560} className={styles.showItemImage} sizes="(max-width: 640px) 100vw, (max-width: 1200px) 50vw, 25vw" loading="lazy" />
+                    ) : (
+                      <div className={styles.showItemImageEmpty}>暂无图片</div>
+                    )}
+                    <span className={styles.showItemIntro}>{item.detail || item.name}</span>
+                    <span className={styles.showItemPrice}>¥{item.price}</span>
+                  </Link>
+                </article>
+              ))}
+            </div>
+
+            {list.length === 0 && <div className={styles.empty}>未查询到该商品</div>}
           </div>
         </section>
       </main>

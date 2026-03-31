@@ -1,7 +1,10 @@
 "use client";
 
-import * as echarts from "echarts/auto";
+import * as echarts from "echarts";
+import { CanvasRenderer } from "echarts/renderers";
 import { useEffect, useMemo, useRef, useState } from "react";
+
+(echarts as unknown as { use?: (ext: unknown[]) => void }).use?.([CanvasRenderer]);
 
 type CommuteType = "car" | "ev" | "public" | "bike";
 type DietType = "meat" | "balanced" | "vegetarian";
