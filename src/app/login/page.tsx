@@ -68,7 +68,7 @@ export default function LoginPage() {
             <div className="flex h-full flex-col rounded-[28px] border border-[#eadfce] bg-white/70 p-8">
               <div className="inline-flex w-fit items-center gap-3 rounded-full border border-[#d7cab8] bg-white px-4 py-2 text-[#4f4137] shadow-sm">
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#3a5e4c] to-[#7b9c7e] text-white">🌿</span>
-                <span className="text-lg font-semibold tracking-wide">Eslife</span>
+                <span className="text-lg font-semibold tracking-wide">绿脉永续</span>
               </div>
 
               <h2 className="mt-6 text-4xl font-semibold leading-tight text-[#3f4037]">与自然一起生活</h2>
@@ -126,7 +126,7 @@ export default function LoginPage() {
             </div>
 
             <h1 className="mb-1 text-2xl font-semibold text-[#3f4037]">{isLogin ? "欢迎回来" : "创建账号"}</h1>
-            <p className="mb-6 text-sm text-[#857766]">{isLogin ? "继续你的绿色旅程" : "加入 Eslife，开始低碳行动"}</p>
+            <p className="mb-6 text-sm text-[#857766]">{isLogin ? "继续你的绿色旅程" : "加入绿脉永续，开始低碳行动"}</p>
 
             <form onSubmit={submit} className="space-y-4">
               <div>
