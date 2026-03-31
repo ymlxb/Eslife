@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Pusher from "pusher-js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -45,7 +46,7 @@ export default function ImClient({ initialToUserId }: Props) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const messageListRef = useRef<VirtualListHandle | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
+  const pusherRef = useRef<Pusher | null>(null);
   const meIdRef = useRef(0);
   const meUsernameRef = useRef("");
   const userByIdRef = useRef<Map<number, UserItem>>(new Map());
@@ -120,74 +121,69 @@ export default function ImClient({ initialToUserId }: Props) {
     void boot();
 
     return () => {
-      wsRef.current?.close();
-      wsRef.current = null;
+      pusherRef.current?.disconnect();
+      pusherRef.current = null;
     };
     // 仅在初始化时拉取用户关系
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (!meUsername) return;
+    if (!meId || !activeUserId) return;
 
-    const wsBase = process.env.NEXT_PUBLIC_WS_BASE_URL || "ws://localhost:8090";
-    const wsUrl = `${wsBase}/chat/chat/${encodeURIComponent(meUsername)}`;
+    const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
+    const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+    if (!pusherKey || !pusherCluster) {
+      setError("Pusher 配置缺失，请检查环境变量");
+      return;
+    }
+
     setWsConnecting(true);
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
+    const pusher = new Pusher(pusherKey, {
+      cluster: pusherCluster,
+      authEndpoint: "/api/pusher/auth",
+    });
+    pusherRef.current = pusher;
 
-    ws.onopen = () => {
+    const channelName = `private-chat-${Math.min(meId, activeUserId)}-${Math.max(meId, activeUserId)}`;
+    const channel = pusher.subscribe(channelName);
+
+    const onConnected = () => {
       setWsConnecting(false);
       setWsOnline(true);
       setError("");
     };
-
-    ws.onclose = (event) => {
+    const onConnecting = () => {
+      setWsConnecting(true);
+      setWsOnline(false);
+    };
+    const onDisconnected = () => {
       setWsConnecting(false);
       setWsOnline(false);
-      if (!event.wasClean) {
-        setError(`WebSocket 已断开(code=${event.code})，请确认聊天服务已启动：${wsBase}`);
-      }
     };
-
-    ws.onerror = () => {
+    const onError = () => {
       setWsConnecting(false);
       setWsOnline(false);
-      setError(`WebSocket 连接失败，请确认聊天服务地址可用：${wsBase}`);
+      setError("Pusher 连接失败，请稍后重试");
     };
 
-    ws.onmessage = (event) => {
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(event.data);
-      } catch {
-        return;
-      }
+    pusher.connection.bind("connected", onConnected);
+    pusher.connection.bind("connecting", onConnecting);
+    pusher.connection.bind("disconnected", onDisconnected);
+    pusher.connection.bind("error", onError);
 
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        return;
-      }
-
-      const payload = parsed as { fromName?: string; toName?: string; content?: string; id?: number; createdAt?: string };
-      if (!payload.fromName || !payload.toName || !payload.content) {
-        return;
-      }
-
-      const fromUser = userByUsernameRef.current.get(payload.fromName) || null;
-      const toUser = userByUsernameRef.current.get(payload.toName) || null;
-      const activeUser = userByIdRef.current.get(activeUserIdRef.current);
-      const activeUsername = activeUser?.username || "";
-      const currentMeName = meUsernameRef.current;
+    channel.bind("chat-message", (payload: { fromUserId: number; toUserId: number; content: string; id?: number; createdAt?: string }) => {
+      if (!payload?.content || !payload?.fromUserId || !payload?.toUserId) return;
 
       const inCurrentDialog =
-        (payload.fromName === currentMeName && payload.toName === activeUsername) ||
-        (payload.fromName === activeUsername && payload.toName === currentMeName);
+        (payload.fromUserId === meIdRef.current && payload.toUserId === activeUserIdRef.current) ||
+        (payload.fromUserId === activeUserIdRef.current && payload.toUserId === meIdRef.current);
 
       if (!inCurrentDialog) {
-        if (payload.toName === currentMeName && fromUser) {
+        if (payload.toUserId === meIdRef.current) {
           setUnreadMap((prev) => ({
             ...prev,
-            [fromUser.id]: (prev[fromUser.id] || 0) + 1,
+            [payload.fromUserId]: (prev[payload.fromUserId] || 0) + 1,
           }));
         }
         return;
@@ -195,20 +191,26 @@ export default function ImClient({ initialToUserId }: Props) {
 
       appendMessage({
         id: Number(payload.id) || Date.now(),
-        fromUserId: payload.fromName === currentMeName ? meIdRef.current : (fromUser?.id || activeUserIdRef.current),
-        toUserId: payload.toName === currentMeName ? meIdRef.current : (toUser?.id || activeUserIdRef.current),
+        fromUserId: payload.fromUserId,
+        toUserId: payload.toUserId,
         content: payload.content,
         createdAt: payload.createdAt || new Date().toISOString(),
       });
-    };
+    });
 
     return () => {
-      ws.close();
-      if (wsRef.current === ws) {
-        wsRef.current = null;
+      channel.unbind_all();
+      channel.unsubscribe();
+      pusher.connection.unbind("connected", onConnected);
+      pusher.connection.unbind("connecting", onConnecting);
+      pusher.connection.unbind("disconnected", onDisconnected);
+      pusher.connection.unbind("error", onError);
+      pusher.disconnect();
+      if (pusherRef.current === pusher) {
+        pusherRef.current = null;
       }
     };
-  }, [meUsername, wsRetryKey]);
+  }, [meId, activeUserId, wsRetryKey]);
 
   useEffect(() => {
     if (!activeUserId) return;
@@ -245,31 +247,23 @@ export default function ImClient({ initialToUserId }: Props) {
   }, [messages, activeUserId]);
 
   const send = async () => {
-    if (!content.trim() || !activeUserId || sending || !wsRef.current) return;
-    const ws = wsRef.current;
-    if (ws.readyState !== WebSocket.OPEN) {
-      setError("WebSocket 未连接，请稍后重试");
-      return;
-    }
-
-    const activeUser = users.find((u) => u.id === activeUserId);
-    if (!activeUser?.username || !meUsername) {
-      setError("聊天对象异常，请重试");
-      return;
-    }
-
+    if (!content.trim() || !activeUserId || sending) return;
     setSending(true);
     const text = content.trim();
     try {
-      ws.send(
-        JSON.stringify({
-          fromName: meUsername,
-          toName: activeUser.username,
-          content: text,
-        })
-      );
-      setContent("");
-      setError("");
+      const res = await apiRequest<{ code: number; data?: MessageItem }>({
+        url: "/api/chat/messages",
+        method: "POST",
+        data: { toUserId: activeUserId, content: text },
+      });
+
+      if (res.ok && res.data.code === 0 && res.data.data) {
+        appendMessage(res.data.data);
+        setContent("");
+        setError("");
+        return;
+      }
+      setError("发送失败，请稍后重试");
     } catch {
       setError("发送失败，请稍后重试");
     } finally {
@@ -295,7 +289,7 @@ export default function ImClient({ initialToUserId }: Props) {
 
         <div className="flex items-center gap-2 text-xs">
           <span className={`inline-flex rounded-full px-2 py-0.5 ${wsOnline ? "bg-[#e9f2e5] text-[#57704f]" : wsConnecting ? "bg-[#f6eddc] text-[#8a6f3f]" : "bg-[#e6ddd1] text-[#7b6d60]"}`}>
-            {wsOnline ? "WebSocket在线" : wsConnecting ? "连接中..." : "WebSocket离线"}
+            {wsOnline ? "Pusher在线" : wsConnecting ? "连接中..." : "Pusher离线"}
           </span>
           {!wsOnline && (
             <button
@@ -418,7 +412,7 @@ export default function ImClient({ initialToUserId }: Props) {
               placeholder="输入消息..."
               className="h-10 flex-1 rounded-lg border border-[#d9cab7] bg-white px-3 text-[#4f4137]"
             />
-            <button onClick={() => void send()} disabled={sending || !wsOnline} className="h-10 rounded-lg bg-[#5f7b57] px-4 text-white disabled:opacity-60">
+            <button onClick={() => void send()} disabled={sending || !activeUserId} className="h-10 rounded-lg bg-[#5f7b57] px-4 text-white disabled:opacity-60">
               {sending ? "发送中..." : "发送"}
             </button>
           </footer>

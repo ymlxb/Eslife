@@ -1,7 +1,22 @@
 import { NextResponse } from "next/server";
+import Pusher from "pusher";
 
 import { getCurrentUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
+
+const pusher =
+  process.env.PUSHER_APP_ID &&
+  process.env.PUSHER_KEY &&
+  process.env.PUSHER_SECRET &&
+  process.env.PUSHER_CLUSTER
+    ? new Pusher({
+        appId: process.env.PUSHER_APP_ID,
+        key: process.env.PUSHER_KEY,
+        secret: process.env.PUSHER_SECRET,
+        cluster: process.env.PUSHER_CLUSTER,
+        useTLS: true,
+      })
+    : null;
 
 export async function GET(request: Request) {
   const me = await getCurrentUser();
@@ -72,6 +87,21 @@ export async function POST(request: Request) {
       content,
     },
   });
+
+  if (pusher) {
+    try {
+      const channelName = `private-chat-${Math.min(me.id, toUserId)}-${Math.max(me.id, toUserId)}`;
+      await pusher.trigger(channelName, "chat-message", {
+        id: msg.id,
+        fromUserId: msg.fromUserId,
+        toUserId: msg.toUserId,
+        content: msg.content,
+        createdAt: msg.createdAt.toISOString(),
+      });
+    } catch (error) {
+      console.error("Pusher 发送失败:", error);
+    }
+  }
 
   return NextResponse.json({ code: 0, data: msg });
 }
