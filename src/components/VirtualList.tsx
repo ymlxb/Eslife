@@ -6,6 +6,7 @@ import {
   ReactNode,
   Ref,
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useRef,
@@ -29,26 +30,38 @@ type Props<T> = {
 };
 
 type MeasuredItemProps = {
+  index: number;
   top: number;
-  onSize: (height: number) => void;
+  onSize: (index: number, height: number) => void;
   children: ReactNode;
 };
 
-function MeasuredItem({ top, onSize, children }: MeasuredItemProps) {
+function MeasuredItem({ index, top, onSize, children }: MeasuredItemProps) {
   const ref = useRef<HTMLDivElement | null>(null);
+  const onSizeRef = useRef(onSize);
+  const lastHeightRef = useRef(-1);
+
+  useEffect(() => {
+    onSizeRef.current = onSize;
+  }, [onSize]);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
 
-    const report = () => onSize(el.offsetHeight);
+    const report = () => {
+      const next = el.offsetHeight;
+      if (Math.abs(lastHeightRef.current - next) <= 1) return;
+      lastHeightRef.current = next;
+      onSizeRef.current(index, next);
+    };
     report();
 
     const observer = new ResizeObserver(() => report());
     observer.observe(el);
 
     return () => observer.disconnect();
-  }, [onSize]);
+  }, [index]);
 
   return (
     <div
@@ -169,7 +182,7 @@ function VirtualListInner<T>(
     return arr;
   })();
 
-  const onSize = (index: number, height: number) => {
+  const onSize = useCallback((index: number, height: number) => {
     setSizes((prev) => {
       const prevHeight = prev[index] || 0;
       if (Math.abs(prevHeight - height) <= 1) {
@@ -180,7 +193,7 @@ function VirtualListInner<T>(
         [index]: height,
       };
     });
-  };
+  }, []);
 
   const contentStyle: CSSProperties = {
     height: Math.max(totalHeight, 1),
@@ -194,7 +207,7 @@ function VirtualListInner<T>(
       ) : (
         <div style={contentStyle} className={innerClassName}>
           {visible.map((index) => (
-            <MeasuredItem key={itemKey(items[index], index)} top={offsets[index]} onSize={(height) => onSize(index, height)}>
+            <MeasuredItem key={itemKey(items[index], index)} index={index} top={offsets[index]} onSize={onSize}>
               {renderItem(items[index], index)}
             </MeasuredItem>
           ))}
