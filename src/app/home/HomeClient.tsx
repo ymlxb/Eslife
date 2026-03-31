@@ -10,6 +10,7 @@ type CommodityCard = {
   name: string;
   price: string;
   detail: string | null;
+  imageUrl: string | null;
   sellerName: string;
 };
 
@@ -211,6 +212,20 @@ export default function HomeClient({ latestList }: Props) {
             ) : (
               latestList.map((item) => (
                 <article key={item.id} className={styles.productCard}>
+                  <div className={styles.productImageWrap}>
+                    {item.imageUrl ? (
+                      <Image
+                        src={item.imageUrl}
+                        alt={item.name}
+                        fill
+                        className={styles.productImage}
+                        sizes="(max-width: 1024px) 100vw, 33vw"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className={styles.productImageEmpty}>暂无图片</div>
+                    )}
+                  </div>
                   <Link href={`/detail/${item.id}`} className={styles.productTitle}>
                     {item.name}
                   </Link>

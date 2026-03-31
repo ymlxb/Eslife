@@ -151,9 +151,12 @@
 
 .sectionFeature {
   width: 100%;
-  background-image: linear-gradient(to right bottom, rgba(128, 214, 113, 0.9), rgba(40, 180, 133, 0.9));
+  background-image: linear-gradient(rgba(90, 185, 132, 0.85), rgba(90, 185, 132, 0.85)), url('/legacy/assets/backgroud-CPdGzPge.jpg');
+  background-size: cover;
+  background-position: center;
   clip-path: polygon(0 8vh, 100% 0, 100% 92%, 0 100%);
   padding: 10rem 1rem 8rem;
+  margin-top: -3.7rem;
 }
 
 .sectionBrand,
@@ -236,6 +239,7 @@
 .sectionTours {
   background: #f7f7f7;
   padding: 7rem 1rem;
+  margin-top: -5rem;
 }
 
 .sectionLatest {
@@ -256,6 +260,30 @@
   border-radius: 12px;
   padding: 1rem;
   box-shadow: 0 10px 22px rgba(0,0,0,.08);
+}
+
+.productImageWrap {
+  position: relative;
+  height: 180px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f1f5f1;
+  border: 1px solid #e7efe7;
+  margin-bottom: .9rem;
+}
+
+.productImage {
+  object-fit: cover;
+  object-position: center;
+}
+
+.productImageEmpty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: .85rem;
 }
 
 .flipCard {

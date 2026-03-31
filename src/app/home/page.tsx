@@ -10,6 +10,7 @@ type CommodityCard = {
   name: string;
   price: { toString(): string } | string;
   detail: string | null;
+  imageUrl: string | null;
   seller: {
     username: string;
     displayName: string | null;
@@ -39,6 +40,20 @@ export default async function HomePage() {
     name: item.name,
     price: typeof item.price === "string" ? item.price : item.price.toString(),
     detail: item.detail,
+    imageUrl: (() => {
+      if (!item.imageUrl) return null;
+      const raw = item.imageUrl.trim();
+      if (!raw) return null;
+      if (raw.startsWith("[")) {
+        try {
+          const parsed = JSON.parse(raw) as string[];
+          return parsed.find((url) => typeof url === "string" && url.trim()) || null;
+        } catch {
+          return raw;
+        }
+      }
+      return raw;
+    })(),
     sellerName: item.seller.displayName || item.seller.username,
   }));
 
