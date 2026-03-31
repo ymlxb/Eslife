@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
   const file = formData.get("file");
 
   if (!(file instanceof File)) {
-    return NextResponse.json({ code: 1, msg: "请上传头像图片" }, { status: 400 });
+    return NextResponse.json({ code: 1, msg: "请上传图片" }, { status: 400 });
   }
 
   if (!ALLOWED.has(file.type)) {
@@ -42,11 +42,10 @@ export async function POST(request: NextRequest) {
   }
 
   const filename = `${Date.now()}-${randomUUID()}${extFromType(file.type)}`;
-  const blob = await put(`uploads/avatars/${filename}`, file, {
+  const blob = await put(`uploads/posts/${filename}`, file, {
     access: "public",
     addRandomSuffix: false,
   });
-  const url = blob.url;
 
-  return NextResponse.json({ code: 0, msg: "上传成功", data: { url } });
+  return NextResponse.json({ code: 0, msg: "上传成功", data: { url: blob.url } });
 }

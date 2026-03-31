@@ -1,8 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 
 import { getCurrentUser } from "@/lib/current-user";
@@ -18,10 +16,14 @@ function extFromType(type: string) {
   return ".jpg";
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ code: 1, msg: "未登录" }, { status: 401 });
+  }
+
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return NextResponse.json({ code: 1, msg: "未配置 BLOB_READ_WRITE_TOKEN" }, { status: 500 });
   }
 
   const formData = await request.formData();
@@ -44,31 +46,15 @@ export async function POST(request: Request) {
     }
   }
 
-  const uploadDir = path.join(process.cwd(), "public", "uploads", "commodities");
-  const canUseBlob = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
-  if (!canUseBlob) {
-    await mkdir(uploadDir, { recursive: true });
-  }
-
   const urls: string[] = [];
 
   for (const file of files) {
     const filename = `${Date.now()}-${randomUUID()}${extFromType(file.type)}`;
-
-    if (canUseBlob) {
-      const blob = await put(`uploads/commodities/${filename}`, file, {
-        access: "public",
-        addRandomSuffix: false,
-      });
-      urls.push(blob.url);
-      continue;
-    }
-
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const fullPath = path.join(uploadDir, filename);
-    await writeFile(fullPath, buffer);
-    urls.push(`/uploads/commodities/${filename}`);
+    const blob = await put(`uploads/commodities/${filename}`, file, {
+      access: "public",
+      addRandomSuffix: false,
+    });
+    urls.push(blob.url);
   }
 
   return NextResponse.json({ code: 0, msg: "上传成功", data: { urls } });
