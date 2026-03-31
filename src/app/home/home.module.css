@@ -5,12 +5,26 @@
 
 .header {
   height: 85vh;
-  background-image: linear-gradient(to right bottom, rgba(128, 214, 113, 0.806), rgba(40, 180, 133, 0.829)), url('/legacy/assets/backgroud-CPdGzPge.jpg');
-  background-size: cover;
-  background-position: center;
   clip-path: polygon(0 0, 100% 0, 100% 75vh, 0 100%);
   position: relative;
   border-radius: 12px;
+  overflow: hidden;
+}
+
+.heroMedia {
+  position: absolute;
+  inset: 0;
+}
+
+.heroImage {
+  object-fit: cover;
+  object-position: center;
+}
+
+.heroOverlay {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(to right bottom, rgba(128, 214, 113, 0.806), rgba(40, 180, 133, 0.829));
 }
 
 .headerTextBox {
@@ -19,6 +33,7 @@
   top: 40%;
   left: 50%;
   transform: translate(-50%, -50%);
+  z-index: 1;
 }
 
 .headingPrimary {
@@ -136,11 +151,17 @@
 
 .sectionFeature {
   width: 100%;
-  background-image: linear-gradient(to right bottom, rgba(128, 214, 113, 0.806), rgba(40, 180, 133, 0.829)), url('/legacy/assets/backgroud-CPdGzPge.jpg');
-  background-size: cover;
-  background-position: center;
+  background-image: linear-gradient(to right bottom, rgba(128, 214, 113, 0.9), rgba(40, 180, 133, 0.9));
   clip-path: polygon(0 8vh, 100% 0, 100% 92%, 0 100%);
   padding: 10rem 1rem 8rem;
+}
+
+.sectionBrand,
+.sectionFeature,
+.sectionTours,
+.sectionLatest {
+  content-visibility: auto;
+  contain-intrinsic-size: 900px;
 }
 
 .headingSecondaryLight {
@@ -276,21 +297,19 @@
 }
 
 .cardPicture {
+  position: relative;
   height: 170px;
-  background-size: cover;
-  background-position: center;
 }
 
-.cardPicture1 {
-  background-image: linear-gradient(to right bottom, rgba(128, 214, 113, 0.72), rgba(40, 180, 133, 0.76)), url('/legacy/assets/trade-3DTESx5h.jpg');
+.cardImage {
+  object-fit: cover;
+  object-position: center;
 }
 
-.cardPicture2 {
-  background-image: url('/legacy/assets/brand7-Ba_-hwgh.png');
-}
-
-.cardPicture3 {
-  background-image: linear-gradient(to right bottom, rgba(128, 214, 113, 0.72), rgba(40, 180, 133, 0.76)), url('/legacy/assets/advice-B0E9PXg8.png');
+.cardImageOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right bottom, rgba(128, 214, 113, 0.35), rgba(40, 180, 133, 0.35));
 }
 
 .cardHeading {
@@ -345,6 +364,26 @@
   .photoComposition { min-height: 240px; }
   .cardsRow { grid-template-columns: 1fr; }
   .fourColRow { grid-template-columns: 1fr; }
+  .header {
+    clip-path: none;
+    height: 72vh;
+  }
+  .sectionFeature {
+    clip-path: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .headingPrimaryMain,
+  .headingPrimarySub,
+  .heroBtn,
+  .featureBox,
+  .featureFlipInner,
+  .flipCardInner {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
 }
 
 @keyframes moveInLeft {

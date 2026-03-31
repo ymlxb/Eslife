@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -47,10 +48,17 @@ export default function ImClient({ initialToUserId }: Props) {
   const wsRef = useRef<WebSocket | null>(null);
   const meIdRef = useRef(0);
   const meUsernameRef = useRef("");
-  const usersRef = useRef<UserItem[]>([]);
+  const userByIdRef = useRef<Map<number, UserItem>>(new Map());
+  const userByUsernameRef = useRef<Map<string, UserItem>>(new Map());
   const activeUserIdRef = useRef(initialToUserId || 0);
+  const messageReqSeqRef = useRef(0);
 
   const activeUser = useMemo(() => users.find((u) => u.id === activeUserId) || null, [users, activeUserId]);
+  const userById = useMemo(() => {
+    const map = new Map<number, UserItem>();
+    users.forEach((u) => map.set(u.id, u));
+    return map;
+  }, [users]);
 
   const appendMessage = (next: MessageItem) => {
     setMessages((prev) => {
@@ -70,7 +78,8 @@ export default function ImClient({ initialToUserId }: Props) {
   }, [meUsername]);
 
   useEffect(() => {
-    usersRef.current = users;
+    userByIdRef.current = new Map(users.map((u) => [u.id, u] as const));
+    userByUsernameRef.current = new Map(users.map((u) => [u.username, u] as const));
   }, [users]);
 
   useEffect(() => {
@@ -164,9 +173,9 @@ export default function ImClient({ initialToUserId }: Props) {
         return;
       }
 
-      const fromUser = usersRef.current.find((u) => u.username === payload.fromName) || null;
-      const toUser = usersRef.current.find((u) => u.username === payload.toName) || null;
-      const activeUser = usersRef.current.find((u) => u.id === activeUserIdRef.current);
+      const fromUser = userByUsernameRef.current.get(payload.fromName) || null;
+      const toUser = userByUsernameRef.current.get(payload.toName) || null;
+      const activeUser = userByIdRef.current.get(activeUserIdRef.current);
       const activeUsername = activeUser?.username || "";
       const currentMeName = meUsernameRef.current;
 
@@ -205,11 +214,15 @@ export default function ImClient({ initialToUserId }: Props) {
     if (!activeUserId) return;
 
     const loadMessages = async () => {
+      const reqId = ++messageReqSeqRef.current;
       setLoading(true);
       const res = await apiRequest<{ code: number; data?: MessageItem[] }>({
         url: `/api/chat/messages?toUserId=${activeUserId}`,
         method: "GET",
       });
+      if (reqId !== messageReqSeqRef.current) {
+        return;
+      }
       if (res.ok && res.data.code === 0) {
         setMessages(res.data.data || []);
         setError("");
@@ -313,8 +326,7 @@ export default function ImClient({ initialToUserId }: Props) {
               >
                 <div className="h-7 w-7 shrink-0 overflow-hidden rounded-full border border-[#d8cab7] bg-[#f7efe2]">
                   {u.avatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={u.avatar} alt={u.username} className="h-full w-full object-cover" />
+                    <Image src={u.avatar} alt={u.username} width={28} height={28} className="h-full w-full object-cover" loading="lazy" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-[11px] font-semibold text-[#7c6e61]">
                       {(u.displayName || u.nickname || u.username).slice(0, 1).toUpperCase()}
@@ -335,8 +347,7 @@ export default function ImClient({ initialToUserId }: Props) {
             <div className="flex items-center gap-2">
               <div className="h-9 w-9 overflow-hidden rounded-full border border-[#d8cab7] bg-[#f7efe2]">
                 {activeUser?.avatar ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={activeUser.avatar} alt={activeUser.username} className="h-full w-full object-cover" />
+                  <Image src={activeUser.avatar} alt={activeUser.username} width={36} height={36} className="h-full w-full object-cover" loading="lazy" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-[#7c6e61]">
                     {(activeUser?.displayName || activeUser?.nickname || activeUser?.username || "-").slice(0, 1).toUpperCase()}
@@ -362,7 +373,7 @@ export default function ImClient({ initialToUserId }: Props) {
             empty={!loading ? <p className="text-sm text-[#8a7a6c]">暂无消息</p> : undefined}
             renderItem={(m) => {
               const mine = m.fromUserId === meId;
-              const sender = users.find((u) => u.id === m.fromUserId) || null;
+              const sender = userById.get(m.fromUserId) || null;
               const avatarUrl = mine ? meAvatar : sender?.avatar || null;
               const fallbackText = mine
                 ? (meUsername || "U").slice(0, 1).toUpperCase()
@@ -374,8 +385,7 @@ export default function ImClient({ initialToUserId }: Props) {
                     <div className={`flex items-end gap-2 ${mine ? "flex-row-reverse" : "flex-row"}`}>
                       <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-[#d8cab7] bg-[#f7efe2]">
                         {avatarUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={avatarUrl} alt="avatar" className="h-full w-full object-cover" />
+                          <Image src={avatarUrl} alt="avatar" width={32} height={32} className="h-full w-full object-cover" loading="lazy" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-[#7c6e61]">{fallbackText}</div>
                         )}

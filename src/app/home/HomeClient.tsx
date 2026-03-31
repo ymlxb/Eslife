@@ -26,6 +26,10 @@ export default function HomeClient({ latestList }: Props) {
   return (
     <div className={styles.contain}>
       <header className={styles.header}>
+        <div className={styles.heroMedia} aria-hidden>
+          <Image src="/legacy/assets/backgroud-CPdGzPge.jpg" alt="" fill priority sizes="100vw" className={styles.heroImage} />
+          <div className={styles.heroOverlay} />
+        </div>
         <div className={styles.headerTextBox}>
           <h1 className={styles.headingPrimary}>
             <span className={styles.headingPrimaryMain}>持续生活</span>
@@ -59,9 +63,9 @@ export default function HomeClient({ latestList }: Props) {
             </div>
 
             <div className={styles.photoComposition}>
-              <Image src="/legacy/assets/brand4-JmDFB83O.png" alt="brand4" width={420} height={280} className={styles.photoP1} />
-              <Image src="/legacy/assets/brand5-BwWhM9SS.png" alt="brand5" width={420} height={280} className={styles.photoP2} />
-              <Image src="/legacy/assets/brand6-Bwdejh8V.png" alt="brand6" width={420} height={280} className={styles.photoP3} />
+              <Image src="/legacy/assets/brand4-JmDFB83O.png" alt="brand4" width={420} height={280} className={styles.photoP1} loading="lazy" />
+              <Image src="/legacy/assets/brand5-BwWhM9SS.png" alt="brand5" width={420} height={280} className={styles.photoP2} loading="lazy" />
+              <Image src="/legacy/assets/brand6-Bwdejh8V.png" alt="brand6" width={420} height={280} className={styles.photoP3} loading="lazy" />
             </div>
           </div>
         </section>
@@ -121,7 +125,17 @@ export default function HomeClient({ latestList }: Props) {
             <article className={styles.flipCard}>
               <div className={styles.flipCardInner}>
                 <div className={`${styles.flipSide} ${styles.flipFront}`}>
-                  <div className={`${styles.cardPicture} ${styles.cardPicture1}`} />
+                  <div className={styles.cardPicture}>
+                    <Image
+                      src="/legacy/assets/trade-3DTESx5h.jpg"
+                      alt="二手交易平台"
+                      fill
+                      className={styles.cardImage}
+                      sizes="(max-width: 1024px) 100vw, 33vw"
+                      loading="lazy"
+                    />
+                    <div className={styles.cardImageOverlay} />
+                  </div>
                   <h3 className={styles.cardHeading}>二手交易平台</h3>
                   <p className={styles.cardText}>闲置不浪费，延续物品价值，绿色持续生活从这里开始。</p>
                 </div>
@@ -137,7 +151,16 @@ export default function HomeClient({ latestList }: Props) {
             <article className={styles.flipCard}>
               <div className={styles.flipCardInner}>
                 <div className={`${styles.flipSide} ${styles.flipFront}`}>
-                  <div className={`${styles.cardPicture} ${styles.cardPicture2}`} />
+                  <div className={styles.cardPicture}>
+                    <Image
+                      src="/legacy/assets/brand7-Ba_-hwgh.png"
+                      alt="可持续品牌"
+                      fill
+                      className={styles.cardImage}
+                      sizes="(max-width: 1024px) 100vw, 33vw"
+                      loading="lazy"
+                    />
+                  </div>
                   <h3 className={styles.cardHeading}>可持续品牌</h3>
                   <p className={styles.cardText}>以消费践行环保与社会责任，推动绿色供应链和产品创新。</p>
                 </div>
@@ -153,7 +176,17 @@ export default function HomeClient({ latestList }: Props) {
             <article className={styles.flipCard}>
               <div className={styles.flipCardInner}>
                 <div className={`${styles.flipSide} ${styles.flipFront}`}>
-                  <div className={`${styles.cardPicture} ${styles.cardPicture3}`} />
+                  <div className={styles.cardPicture}>
+                    <Image
+                      src="/legacy/assets/advice-B0E9PXg8.png"
+                      alt="绿色生活指南"
+                      fill
+                      className={styles.cardImage}
+                      sizes="(max-width: 1024px) 100vw, 33vw"
+                      loading="lazy"
+                    />
+                    <div className={styles.cardImageOverlay} />
+                  </div>
                   <h3 className={styles.cardHeading}>绿色生活指南</h3>
                   <p className={styles.cardText}>覆盖家庭、出行、消费多场景，帮助快速落地低碳行动。</p>
                 </div>
