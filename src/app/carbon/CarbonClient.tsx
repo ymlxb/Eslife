@@ -1,6 +1,6 @@
 "use client";
 
-import * as echarts from "echarts";
+import * as echarts from "echarts/auto";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type CommuteType = "car" | "ev" | "public" | "bike";
