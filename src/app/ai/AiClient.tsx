@@ -5,6 +5,41 @@ import VirtualList, { type VirtualListHandle } from "@/components/VirtualList";
 
 type Msg = { id: string; role: "user" | "assistant"; content: string; time: string };
 
+type SecondhandCriteria = {
+  keyword?: string;
+  priceMin?: number;
+  priceMax?: number;
+  limit: number;
+};
+
+type ToolItem = {
+  id: number;
+  title: string;
+  price: number;
+  category: string;
+  publish_time: string;
+  detail: string;
+  seller_name: string;
+};
+
+type FrontendToolContext = {
+  tool: "secondhand";
+  ok: boolean;
+  summary: string;
+  data: {
+    criteria: SecondhandCriteria;
+    items: ToolItem[];
+  };
+};
+
+const CHAT_STORAGE_KEY = "eco-ai-chat-history-v1";
+const WELCOME_MESSAGE: Msg = {
+  id: "welcome",
+  role: "assistant",
+  content: "你好！我是你的 AI 环保助手，欢迎咨询垃圾分类、节能减排和低碳生活问题。",
+  time: "刚刚",
+};
+
 const QUICK_ACTIONS = [
   "给我一份一周低碳通勤建议",
   "如何把厨房垃圾减量 30%？",
@@ -120,21 +155,198 @@ function renderMarkdown(content: string): ReactNode {
   return <Fragment>{nodes}</Fragment>;
 }
 
+function hasSecondhandKeyword(text: string): boolean {
+  return /(二手|闲置|转卖|二手商品|商品列表|secondhand|价格|多少钱|预算|筛选|找|书|书籍|教材|耳机|手机|电脑|笔记本|元以内|以下|以上|不超过)/.test(text.toLowerCase());
+}
+
+function isSecondhandFollowup(text: string): boolean {
+  return /(再|继续|刚才|上一个|上一条|前面|这些|这批|换成|改成|只看|便宜点|更便宜|贵一点|提高预算|再来|来\s*\d+\s*(个|条|件)?)/.test(text);
+}
+
+function extractSecondhandPartialCriteria(message: string) {
+  const rangeMatch = message.match(/(\d{2,8})\s*[-到至~]\s*(\d{2,8})/);
+  const maxOnlyMatch = message.match(/(不超过|以内|以下)\s*(\d{2,8})/);
+  const amountThenLimitMatch = message.match(/(\d{1,8})\s*元?\s*(以下|以内|不超过)/);
+  const minOnlyMatch = message.match(/(\d{1,8})\s*元?\s*(以上|起|及以上)/);
+  const firstNMatch = message.match(/前\s*(\d{1,2})\s*(个|条|件)?/);
+  const nItemsMatch = message.match(/(\d{1,2})\s*(个|条|件)/);
+
+  let priceMin: number | undefined;
+  let priceMax: number | undefined;
+  let limit: number | undefined;
+
+  if (rangeMatch) {
+    priceMin = Number(rangeMatch[1]);
+    priceMax = Number(rangeMatch[2]);
+  } else if (amountThenLimitMatch) {
+    priceMax = Number(amountThenLimitMatch[1]);
+  } else if (maxOnlyMatch) {
+    priceMax = Number(maxOnlyMatch[2]);
+  } else if (minOnlyMatch) {
+    priceMin = Number(minOnlyMatch[1]);
+  }
+
+  if (firstNMatch) {
+    limit = Math.max(1, Math.min(20, Number(firstNMatch[1])));
+  } else if (nItemsMatch) {
+    limit = Math.max(1, Math.min(20, Number(nItemsMatch[1])));
+  }
+
+  const keyword = /书籍|图书|书本|书|教材|教辅|小说/.test(message)
+    ? "书"
+    : /笔记本|电脑|macbook/i.test(message)
+      ? "笔记本"
+      : /手机|iphone|安卓/i.test(message)
+        ? "手机"
+        : /耳机|键盘|鼠标|平板|手表|相机|显示器/.test(message)
+          ? message.match(/耳机|键盘|鼠标|平板|手表|相机|显示器/)?.[0]
+          : undefined;
+
+  return { keyword, priceMin, priceMax, limit };
+}
+
+function resolveSecondhandCriteria(message: string, messages: Msg[]): SecondhandCriteria {
+  const userMessages = messages.filter((m) => m.role === "user").map((m) => m.content).slice(-6);
+  const merged: SecondhandCriteria = { limit: 6 };
+
+  for (const text of [...userMessages, message]) {
+    const partial = extractSecondhandPartialCriteria(text);
+    if (partial.keyword) merged.keyword = partial.keyword;
+    if (partial.priceMin !== undefined) merged.priceMin = partial.priceMin;
+    if (partial.priceMax !== undefined) merged.priceMax = partial.priceMax;
+    if (partial.limit !== undefined) merged.limit = partial.limit;
+  }
+
+  const currentPartial = extractSecondhandPartialCriteria(message);
+  if (/再便宜点|更便宜|便宜一些/.test(message) && currentPartial.priceMax === undefined && merged.priceMax !== undefined) {
+    merged.priceMax = Math.max(1, Math.floor(merged.priceMax * 0.8));
+  }
+
+  if (/贵一点|提高预算|放宽预算/.test(message) && currentPartial.priceMax === undefined && merged.priceMax !== undefined) {
+    merged.priceMax = Math.max(1, Math.floor(merged.priceMax * 1.2));
+  }
+
+  if (/不限价格|不看价格|价格不限/.test(message)) {
+    merged.priceMin = undefined;
+    merged.priceMax = undefined;
+  }
+
+  return merged;
+}
+
+async function buildFrontendToolContext(message: string, messages: Msg[]): Promise<FrontendToolContext | null> {
+  const hasHistorySecondhand = messages.filter((m) => m.role === "user").slice(-6).some((m) => hasSecondhandKeyword(m.content));
+  if (!hasSecondhandKeyword(message) && !(isSecondhandFollowup(message) && hasHistorySecondhand)) {
+    return null;
+  }
+
+  const criteria = resolveSecondhandCriteria(message, messages);
+  const query = new URLSearchParams();
+  if (criteria.keyword) query.set("q", criteria.keyword);
+  query.set("order", "asc");
+
+  const res = await fetch(`/api/commodities?${query.toString()}`);
+  if (!res.ok) {
+    return {
+      tool: "secondhand",
+      ok: false,
+      summary: "前端工具调用失败",
+      data: {
+        criteria,
+        items: [],
+      },
+    };
+  }
+
+  const json = (await res.json().catch(() => null)) as { code?: number; data?: Array<Record<string, unknown>> } | null;
+  const source = Array.isArray(json?.data) ? json.data : [];
+
+  const filtered = source.filter((item) => {
+    const price = Number(item.price);
+    if (Number.isNaN(price)) return false;
+    if (criteria.priceMin !== undefined && price < criteria.priceMin) return false;
+    if (criteria.priceMax !== undefined && price > criteria.priceMax) return false;
+    return true;
+  });
+
+  const items: ToolItem[] = filtered.slice(0, criteria.limit).map((item) => ({
+    id: Number(item.id) || 0,
+    title: String(item.name ?? ""),
+    price: Number(item.price),
+    category: String(item.tag ?? "未分类"),
+    publish_time: typeof item.createdAt === "string" ? item.createdAt.slice(0, 10) : "",
+    detail: String(item.detail ?? ""),
+    seller_name: String(((item.seller as Record<string, unknown> | undefined)?.displayName ?? (item.seller as Record<string, unknown> | undefined)?.username ?? "")),
+  }));
+
+  return {
+    tool: "secondhand",
+    ok: true,
+    summary: items.length > 0 ? `共命中 ${items.length} 条` : "未命中数据",
+    data: {
+      criteria,
+      items,
+    },
+  };
+}
+
 export default function AiClient() {
   const listRef = useRef<VirtualListHandle | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [messages, setMessages] = useState<Msg[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content: "你好！我是你的 AI 环保助手，欢迎咨询垃圾分类、节能减排和低碳生活问题。",
-      time: "刚刚",
-    },
-  ]);
+  const [hydrated, setHydrated] = useState(false);
+  const [messages, setMessages] = useState<Msg[]>([WELCOME_MESSAGE]);
 
   const canSend = useMemo(() => input.trim().length > 0, [input]);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(CHAT_STORAGE_KEY);
+      if (!raw) {
+        setHydrated(true);
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) {
+        setHydrated(true);
+        return;
+      }
+
+      const restored = parsed
+        .filter((item) => item && typeof item === "object")
+        .map((item) => {
+          const obj = item as Partial<Msg>;
+          if ((obj.role !== "user" && obj.role !== "assistant") || typeof obj.content !== "string") {
+            return null;
+          }
+          return {
+            id: typeof obj.id === "string" ? obj.id : `${obj.role}_${Date.now()}`,
+            role: obj.role,
+            content: obj.content,
+            time: typeof obj.time === "string" ? obj.time : "刚刚",
+          } as Msg;
+        })
+        .filter((item): item is Msg => !!item);
+
+      setMessages(restored.length > 0 ? restored : [WELCOME_MESSAGE]);
+    } catch {
+      setMessages([WELCOME_MESSAGE]);
+    } finally {
+      setHydrated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      const toSave = messages.slice(-80);
+      window.localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(toSave));
+    } catch {
+      // ignore storage errors
+    }
+  }, [messages, hydrated]);
 
   useEffect(() => {
     const raf = window.requestAnimationFrame(() => {
@@ -168,10 +380,11 @@ export default function AiClient() {
       .slice(-12);
 
     try {
+      const toolContext = await buildFrontendToolContext(q, messages);
       const res = await fetch("/api/ai/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
-        body: JSON.stringify({ message: q, history }),
+        body: JSON.stringify({ message: q, history, toolContext }),
       });
 
       if (!res.ok || !res.body) {
