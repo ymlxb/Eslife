@@ -2,7 +2,7 @@
 
 import * as echarts from "echarts";
 import { CanvasRenderer } from "echarts/renderers";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 (echarts as unknown as { use?: (ext: unknown[]) => void }).use?.([CanvasRenderer]);
 
@@ -26,29 +26,13 @@ type ChinaGeoJson = {
   features?: GeoFeature[];
 };
 
-const TRANSPORT_FACTORS: Record<CommuteType, number> = {
-  car: 0.22,
-  ev: 0.08,
-  public: 0.06,
-  bike: 0.01,
-};
-
-const DIET_FACTORS: Record<DietType, number> = {
-  meat: 2.6,
-  balanced: 1.9,
-  vegetarian: 1.3,
+type CarbonAiResult = {
+  summary: string;
+  chartCode: string;
 };
 
 const HISTORY_KEY = "carbonHistory_v2";
 const CHINA_GEOJSON_URL = "/api/maps/china";
-
-const SUGGESTION_POOL = {
-  transport: "🚴 通勤碳排偏高：每周至少 2 天改为骑行、步行或公共交通。",
-  electricity: "💡 用电占比偏高：优先替换 LED 与一级能效家电，空调温度上调 1℃。",
-  diet: "🥗 饮食碳排偏高：每周增加 2-3 餐植物性饮食，减少高碳红肉摄入。",
-  water: "🚰 建议安装节水起泡器并缩短淋浴时长，降低隐含能耗与用水负担。",
-  habit: "♻️ 尝试“少即是多”采购策略：优先耐用品与可重复使用物品。",
-};
 
 function readHistory(): HistoryRecord[] {
   if (typeof window === "undefined") return [];
@@ -69,38 +53,192 @@ export default function CarbonClient() {
   const [distance, setDistance] = useState(20);
   const [electricity, setElectricity] = useState(280);
   const [dietType, setDietType] = useState<DietType>("balanced");
-  const [history, setHistory] = useState<HistoryRecord[]>(readHistory);
+  const [history, setHistory] = useState<HistoryRecord[]>([]);
+  const [historyHydrated, setHistoryHydrated] = useState(false);
   const [savedHint, setSavedHint] = useState("");
   const [mapReady, setMapReady] = useState(false);
   const [mapUnavailable, setMapUnavailable] = useState(false);
   const [mapSeriesData, setMapSeriesData] = useState<Array<{ name: string; value: number }>>([]);
   const [mapRange, setMapRange] = useState<{ min: number; max: number }>({ min: 0, max: 1 });
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [aiResult, setAiResult] = useState<CarbonAiResult | null>(null);
+  const [drilldownLoading, setDrilldownLoading] = useState(false);
+  const [drilldownTitle, setDrilldownTitle] = useState("");
+  const [drilldownText, setDrilldownText] = useState("");
+  const [drilldownOpen, setDrilldownOpen] = useState(false);
 
-  const transportEmission = useMemo(
-    () => distance * TRANSPORT_FACTORS[commuteType],
-    [distance, commuteType]
-  );
-  const electricityEmission = useMemo(() => (electricity / 30) * 0.57, [electricity]);
-  const dietEmission = useMemo(() => DIET_FACTORS[dietType], [dietType]);
+  const parseOption = (code: string): echarts.EChartsOption | null => {
+    if (!code) return null;
 
-  const total = useMemo(
-    () => transportEmission + electricityEmission + dietEmission,
-    [transportEmission, electricityEmission, dietEmission]
-  );
+    const extractOptionLiteral = (input: string) => {
+      const text = input.trim();
 
-  const treeEquivalent = useMemo(() => ((total * 365) / 18).toFixed(1), [total]);
+      const scriptMatches = [...text.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)];
+      const source = scriptMatches.length > 0
+        ? (scriptMatches[scriptMatches.length - 1][1] || text)
+        : text;
+
+      const assignMatch = source.match(/(?:var|let|const)?\s*option\s*=\s*/i);
+      if (!assignMatch || assignMatch.index === undefined) {
+        return source.replace(/^\s*option\s*=\s*/i, "").replace(/;\s*$/, "").trim();
+      }
+
+      const startSearch = assignMatch.index + assignMatch[0].length;
+      const braceStart = source.indexOf("{", startSearch);
+      if (braceStart < 0) return "";
+
+      let depth = 0;
+      let inSingle = false;
+      let inDouble = false;
+      let escaped = false;
+
+      for (let i = braceStart; i < source.length; i += 1) {
+        const ch = source[i];
+
+        if (escaped) {
+          escaped = false;
+          continue;
+        }
+
+        if (ch === "\\") {
+          escaped = true;
+          continue;
+        }
+
+        if (!inDouble && ch === "'") {
+          inSingle = !inSingle;
+          continue;
+        }
+
+        if (!inSingle && ch === '"') {
+          inDouble = !inDouble;
+          continue;
+        }
+
+        if (inSingle || inDouble) continue;
+
+        if (ch === "{") depth += 1;
+        if (ch === "}") {
+          depth -= 1;
+          if (depth === 0) {
+            return source.slice(braceStart, i + 1).trim();
+          }
+        }
+      }
+
+      return "";
+    };
+
+    const optionText = extractOptionLiteral(code);
+    if (!optionText) return null;
+
+    try {
+      return JSON.parse(optionText) as echarts.EChartsOption;
+    } catch {
+      try {
+        if (!optionText.startsWith("{")) return null;
+        const parsed = Function(`"use strict"; return (${optionText});`)() as unknown;
+        if (!parsed || typeof parsed !== "object") return null;
+        return parsed as echarts.EChartsOption;
+      } catch {
+        return null;
+      }
+    }
+  };
+
+  const aiChartOption = useMemo(() => parseOption(aiResult?.chartCode || ""), [aiResult]);
+
+  const normalizedAiChartOption = useMemo(() => {
+    if (!aiChartOption) return null;
+
+    const source = aiChartOption as echarts.EChartsOption & {
+      legend?: { selectedMode?: boolean | "single" | "multiple"; selected?: Record<string, boolean> } | Array<{ selectedMode?: boolean | "single" | "multiple"; selected?: Record<string, boolean> }>;
+      series?: Array<{ type?: string; data?: Array<{ name?: string; value?: number | string }>; selectedMode?: boolean | "single" | "multiple" }>;
+    };
+
+    const next: echarts.EChartsOption & {
+      legend?: { selectedMode?: boolean | "single" | "multiple"; selected?: Record<string, boolean> } | Array<{ selectedMode?: boolean | "single" | "multiple"; selected?: Record<string, boolean> }>;
+      series?: Array<{ type?: string; data?: Array<{ name?: string; value?: number | string }>; selectedMode?: boolean | "single" | "multiple" }>;
+    } = {
+      ...source,
+      legend: source.legend,
+      series: source.series,
+    };
+
+    const pieSeries = Array.isArray(next.series)
+      ? next.series.filter((item) => item?.type === "pie")
+      : [];
+
+    const allNames = pieSeries.flatMap((series) =>
+      Array.isArray(series.data)
+        ? series.data
+            .map((d) => (typeof d?.name === "string" ? d.name.trim() : ""))
+            .filter(Boolean)
+        : [],
+    );
+
+    if (Array.isArray(next.legend)) {
+      next.legend = next.legend.map((legend) => ({
+        ...legend,
+        selectedMode: false,
+        selected: Object.fromEntries(allNames.map((name) => [name, true])),
+      }));
+    } else if (next.legend) {
+      next.legend = {
+        ...next.legend,
+        selectedMode: false,
+        selected: Object.fromEntries(allNames.map((name) => [name, true])),
+      };
+    }
+
+    if (Array.isArray(next.series)) {
+      next.series = next.series.map((series) => {
+        if (series?.type !== "pie") return series;
+        return {
+          ...series,
+          selectedMode: false,
+          data: Array.isArray(series.data)
+            ? series.data.map((item) => ({
+                ...item,
+                value: Number(item?.value ?? 0),
+              }))
+            : series.data,
+        };
+      });
+    }
+
+    return next;
+  }, [aiChartOption]);
+
+  const aiTotal = useMemo(() => {
+    if (!normalizedAiChartOption || !Array.isArray(normalizedAiChartOption.series)) return 0;
+    const firstPie = normalizedAiChartOption.series.find((item) => {
+      const typed = item as { type?: unknown };
+      return typed.type === "pie";
+    }) as { data?: Array<{ value?: number | string }> } | undefined;
+
+    if (!firstPie?.data) return 0;
+    return firstPie.data.reduce((sum, item) => {
+      const value = Number(item?.value ?? 0);
+      return sum + (Number.isFinite(value) ? value : 0);
+    }, 0);
+  }, [normalizedAiChartOption]);
 
   const recommendation = useMemo(() => {
-    const list: string[] = [];
-    if (transportEmission >= 3.5) list.push(SUGGESTION_POOL.transport);
-    if (electricityEmission >= 5) list.push(SUGGESTION_POOL.electricity);
-    if (dietEmission >= 2.4) list.push(SUGGESTION_POOL.diet);
+    const summary = aiResult?.summary || "";
+    const lines = summary
+      .split(/\r?\n/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .filter((item) => /^\d+[.、]|^[-*]/.test(item) || item.includes("建议"));
+    return lines.slice(0, 5);
+  }, [aiResult]);
 
-    if (list.length < 3) list.push(SUGGESTION_POOL.water);
-    if (list.length < 4) list.push(SUGGESTION_POOL.habit);
-
-    return list.slice(0, 4);
-  }, [transportEmission, electricityEmission, dietEmission]);
+  useEffect(() => {
+    setHistory(readHistory());
+    setHistoryHydrated(true);
+  }, []);
 
   useEffect(() => {
     if (!donutRef.current || !mapRef.current) return;
@@ -127,72 +265,36 @@ export default function CarbonClient() {
   }, []);
 
   useEffect(() => {
-    const donut = donutChartRef.current;
-    if (!donut) return;
+    if (!donutRef.current) return;
+    if (!donutChartRef.current) {
+      donutChartRef.current = echarts.init(donutRef.current);
+    }
 
-    donut.setOption({
-      animationDuration: 700,
-      animationEasing: "cubicOut",
-      tooltip: {
-        trigger: "item",
-        formatter: "{b}: {c} kg CO₂e/日 ({d}%)",
-      },
-      color: ["#3A5E4C", "#D9B48B", "#A7C5A3"],
-      series: [
-        {
-          type: "pie",
-          radius: ["58%", "80%"],
-          center: ["50%", "52%"],
-          avoidLabelOverlap: true,
-          labelLine: {
-            length: 12,
-            length2: 12,
-            smooth: 0.2,
-          },
-          label: {
-            color: "#6f6257",
-            formatter: "{b}\n{d}%",
-          },
-          itemStyle: {
-            borderColor: "#fcfaf6",
-            borderWidth: 2,
-            shadowBlur: 8,
-            shadowColor: "rgba(76,63,49,0.12)",
-          },
-          data: [
-            { value: Number(transportEmission.toFixed(2)), name: "交通" },
-            { value: Number(electricityEmission.toFixed(2)), name: "用电" },
-            { value: Number(dietEmission.toFixed(2)), name: "饮食" },
-          ],
-        },
-      ],
-      graphic: [
-        {
-          type: "text",
+    const chart = donutChartRef.current;
+    if (!chart) return;
+
+    chart.off("click");
+
+    if (!normalizedAiChartOption) {
+      chart.clear();
+      chart.setOption({
+        title: {
+          text: "等待 AI 计算结果",
           left: "center",
-          top: "43%",
-          style: {
-            text: `${total.toFixed(2)}`,
-            fill: "#4f4137",
-            fontSize: 26,
-            fontWeight: 700,
-            textAlign: "center",
+          top: "middle",
+          textStyle: {
+            color: "#8c7c6f",
+            fontSize: 16,
+            fontWeight: 500,
           },
         },
-        {
-          type: "text",
-          left: "center",
-          top: "56%",
-          style: {
-            text: "kg CO₂e/日",
-            fill: "#8c7c6f",
-            fontSize: 12,
-            textAlign: "center",
-          },
-        },
-      ],
-    });
-  }, [transportEmission, electricityEmission, dietEmission, total]);
+      });
+      return;
+    }
+
+    chart.setOption(normalizedAiChartOption, true);
+    chart.resize();
+  }, [normalizedAiChartOption]);
 
   useEffect(() => {
     let cancelled = false;
@@ -292,6 +394,12 @@ export default function CarbonClient() {
   }, [mapReady, mapRange, mapSeriesData]);
 
   const save = () => {
+    if (!aiTotal) {
+      setSavedHint("请先点击“AI 工作流分析”获取结果");
+      window.setTimeout(() => setSavedHint(""), 1200);
+      return;
+    }
+
     const item = {
       date: new Date().toLocaleString("zh-CN", {
         month: "2-digit",
@@ -299,7 +407,7 @@ export default function CarbonClient() {
         hour: "2-digit",
         minute: "2-digit",
       }),
-      value: Number(total.toFixed(2)),
+      value: Number(aiTotal.toFixed(2)),
     };
     const next = [item, ...history].slice(0, 5);
     setHistory(next);
@@ -311,6 +419,85 @@ export default function CarbonClient() {
   const clearHistory = () => {
     setHistory([]);
     localStorage.setItem(HISTORY_KEY, "[]");
+  };
+
+  const runAiWorkflow = useCallback(async (focusSector?: string) => {
+    setAiLoading(true);
+    setAiError("");
+    if (!focusSector) {
+      setAiResult(null);
+      setDrilldownText("");
+      setDrilldownTitle("");
+      setDrilldownOpen(false);
+    }
+
+    try {
+      const res = await fetch("/api/carbon/workflow", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          diet: dietType === "meat" ? "high" : "normal",
+          electricity,
+          transport: commuteType === "public" || commuteType === "bike" ? "public" : "car",
+          commute_distance: distance,
+          analysis_mode: focusSector ? "drilldown" : "base",
+          focus_sector: focusSector,
+          context_summary: aiResult?.summary || "",
+        }),
+      });
+
+      const json = (await res.json().catch(() => null)) as {
+        code?: number;
+        msg?: string;
+        data?: CarbonAiResult;
+      } | null;
+
+      if (!res.ok || json?.code !== 0 || !json?.data) {
+        throw new Error(json?.msg || "AI 工作流调用失败");
+      }
+
+      if (focusSector) {
+        setDrilldownTitle(`${focusSector} 深度减碳方案`);
+        setDrilldownText(json.data.summary || "暂无深度分析内容");
+        setDrilldownOpen(true);
+      } else {
+        setAiResult(json.data);
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "AI 工作流调用失败";
+      setAiError(msg);
+    } finally {
+      setAiLoading(false);
+    }
+  }, [aiResult?.summary, commuteType, dietType, distance, electricity]);
+
+  useEffect(() => {
+    const chart = donutChartRef.current;
+    if (!chart || !normalizedAiChartOption) return;
+
+    const handler = (params: { name?: string }) => {
+      const focus = typeof params?.name === "string" ? params.name.trim() : "";
+      if (!focus) return;
+      setDrilldownLoading(true);
+      void runAiWorkflow(focus).finally(() => setDrilldownLoading(false));
+    };
+
+    chart.on("click", handler);
+    return () => {
+      chart.off("click", handler);
+    };
+  }, [normalizedAiChartOption, runAiWorkflow]);
+
+  const backToBaseAnalysis = async () => {
+    setDrilldownOpen(false);
+    setDrilldownLoading(true);
+    try {
+      await runAiWorkflow();
+    } finally {
+      setDrilldownLoading(false);
+    }
   };
 
   return (
@@ -348,19 +535,27 @@ export default function CarbonClient() {
           </div>
 
           <button
-            onClick={save}
-            className="rounded-full bg-[#5f7b57] px-6 py-2.5 text-sm font-medium text-white transition hover:bg-[#516a4b]"
+            onClick={() => void runAiWorkflow()}
+            disabled={aiLoading}
+            className="rounded-full bg-[#3a5e4c] px-6 py-2.5 text-sm font-medium text-white transition hover:bg-[#2f4d3f] disabled:opacity-60"
           >
-            计算碳足迹
+            {aiLoading ? "AI 分析中..." : "AI 工作流分析"}
+          </button>
+          <button
+            onClick={save}
+            className="ml-3 rounded-full bg-[#5f7b57] px-6 py-2.5 text-sm font-medium text-white transition hover:bg-[#516a4b]"
+          >
+            保存本次 AI 结果
           </button>
           {savedHint && <p className="text-sm text-[#5f7b57]">{savedHint}</p>}
+          {aiError && <p className="text-sm text-[#b75f4b]">{aiError}</p>}
         </div>
 
         <div className="rounded-[24px] border border-[#e1d5c6] bg-[#fcfaf6] p-5 shadow-[0_16px_38px_-28px_rgba(76,63,49,0.5)]">
           <h2 className="text-lg font-semibold text-[#5f4a3f]">碳排构成（每日）</h2>
           <div className="mt-2 text-[#6f6257]">
-            <p className="text-4xl font-bold tracking-tight text-[#4f4137]">{total.toFixed(2)} <span className="text-lg font-medium">kg CO₂e/日</span></p>
-            <p className="mt-1 text-sm">约相当于 {treeEquivalent} 棵树一年的吸碳量。</p>
+            <p className="text-4xl font-bold tracking-tight text-[#4f4137]">{aiTotal.toFixed(2)} <span className="text-lg font-medium">kg CO₂e/日</span></p>
+            <p className="mt-1 text-sm">该结果由 Coze 工作流计算。点击图表扇区可触发分项深度分析。</p>
           </div>
           <div ref={donutRef} className="mt-2 h-[310px] w-full" />
         </div>
@@ -383,7 +578,9 @@ export default function CarbonClient() {
         <div className="rounded-[20px] border border-[#e1d5c6] bg-[#f8f5f0] p-5 shadow-[0_14px_30px_-24px_rgba(76,63,49,0.45)]">
           <h3 className="mb-2 text-base font-semibold text-[#5f4a3f]">低碳生活建议</h3>
           <ul className="space-y-2 text-sm leading-[1.4] text-[#5d5147]">
-            {recommendation.map((item) => (
+            {recommendation.length === 0 ? (
+              <li className="rounded-xl bg-white/75 px-3 py-2">请先点击“AI 工作流分析”获取建议。</li>
+            ) : recommendation.map((item) => (
               <li key={item} className="rounded-xl bg-white/75 px-3 py-2">
                 {item}
               </li>
@@ -398,7 +595,7 @@ export default function CarbonClient() {
               清空记录
             </button>
           </div>
-          {history.length === 0 ? (
+          {!historyHydrated || history.length === 0 ? (
             <p className="text-sm text-[#84766b]">暂无历史记录</p>
           ) : (
             <ul className="space-y-1.5 text-sm text-[#5d5147]">
@@ -425,6 +622,62 @@ export default function CarbonClient() {
           )}
         </div>
       </div>
+
+      {/* {aiResult && (
+        <div className="space-y-4 rounded-[20px] border border-[#e1d5c6] bg-[#f8f5f0] p-5 shadow-[0_14px_30px_-24px_rgba(76,63,49,0.45)]">
+          <h3 className="text-base font-semibold text-[#5f4a3f]">Coze AI 工作流结果</h3>
+          <div className="whitespace-pre-wrap rounded-xl bg-white/80 px-3 py-2 text-sm text-[#5d5147]">
+            {aiResult.summary || "暂无总结内容"}
+          </div>
+          {drilldownLoading && <p className="text-sm text-[#6b7c62]">正在生成分项深度分析...</p>}
+          <p className="text-xs text-[#7d6f63]">提示：点击上方饼图分项（交通/用电/饮食）可打开深度分析抽屉。</p>
+        </div>
+      )} */}
+
+      {drilldownOpen && (
+        <div className="fixed inset-0 z-50">
+          <button
+            type="button"
+            aria-label="关闭深度分析"
+            className="absolute inset-0 bg-black/25"
+            onClick={() => setDrilldownOpen(false)}
+          />
+          <aside className="absolute right-0 top-0 h-full w-full max-w-[440px] border-l border-[#d8cab7] bg-[#fcfaf6] p-5 shadow-[-12px_0_30px_-20px_rgba(76,63,49,0.45)]">
+            <div className="mb-4 flex items-center justify-between">
+              <h4 className="text-base font-semibold text-[#5f4a3f]">{drilldownTitle || "分项深度分析"}</h4>
+              <button
+                type="button"
+                onClick={() => setDrilldownOpen(false)}
+                className="rounded-lg border border-[#d1c1ab] bg-white px-2.5 py-1 text-xs text-[#6f6257] hover:bg-[#f6ede2]"
+              >
+                关闭
+              </button>
+            </div>
+
+            <div className="rounded-xl bg-white px-3 py-3 text-sm leading-6 text-[#5d5147]">
+              <div className="whitespace-pre-wrap">{drilldownText || "暂无深度分析内容"}</div>
+            </div>
+
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void backToBaseAnalysis()}
+                disabled={aiLoading || drilldownLoading}
+                className="rounded-full bg-[#3a5e4c] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#2f4d3f] disabled:opacity-60"
+              >
+                {aiLoading || drilldownLoading ? "处理中..." : "返回基础分析"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDrilldownOpen(false)}
+                className="rounded-full border border-[#d1c1ab] bg-white px-4 py-2 text-sm text-[#6f6257] hover:bg-[#f6ede2]"
+              >
+                保持当前结果
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
     </section>
   );
 }

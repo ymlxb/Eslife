@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -14,7 +15,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ code: 1, msg: "用户名或密码不能为空" }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({ where: { username } });
+  let user: Awaited<ReturnType<typeof prisma.user.findUnique>>;
+
+  try {
+    user = await prisma.user.findUnique({ where: { username } });
+  } catch (error) {
+    const code = (error as { code?: string } | null)?.code;
+    if (code === "P1000") {
+      return NextResponse.json({ code: 1, msg: "数据库账号或密码错误，请检查 DATABASE_URL 配置" }, { status: 503 });
+    }
+
+    return NextResponse.json({ code: 1, msg: "服务暂不可用，请稍后重试" }, { status: 500 });
+  }
+
   if (!user) {
     return NextResponse.json({ code: 1, msg: "用户名或密码错误" }, { status: 401 });
   }
