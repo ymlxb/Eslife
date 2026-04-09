@@ -1,5 +1,9 @@
 # EcoMate · 绿脉永续
 
+> 🚀 **部署教程（掘金）**：https://juejin.cn/post/7623266346480074752
+>
+> 首次部署建议先阅读上文，按文章步骤完成环境与上线配置。
+
 EcoMate 是一个面向“绿色生活”场景的全栈系统，覆盖社区互动、二手循环交易、实时聊天、AI 助手与碳足迹分析。
 
 当前版本基于 Next.js App Router，支持：
@@ -203,6 +207,8 @@ WORKFLOW_SERVICE_TOKEN=""
 
 ## 8. 本地开发
 
+> 📦 **线上部署指南**：https://juejin.cn/post/7623266346480074752
+
 ### 8.1 安装依赖
 
 ```bash
@@ -294,4 +300,3 @@ npm run prisma:migrate
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ---
-
