@@ -1,111 +1,297 @@
 # EcoMate · 绿脉永续
 
-一个面向绿色生活场景的全栈 Web 应用，集成了：
+EcoMate 是一个面向“绿色生活”场景的全栈系统，覆盖社区互动、二手循环交易、实时聊天、AI 助手与碳足迹分析。
 
-- 可持续社区与帖子互动
-- 二手交易与商品发布
-- 实时聊天室（WebSocket）
-- AI 环保助手（DeepSeek + SSE 流式）
-- 碳足迹可视化（ECharts）
+当前版本基于 Next.js App Router，支持：
 
-项目已从旧 React 版本迁移到 Next.js App Router，当前为持续迭代版本。
+- 社区内容发布与检索
+- 二手商品发布与筛选
+- WebSocket 实时私聊
+- AI 流式对话（SSE）
+- 前端 AI 工具调用（多轮二手查询）
+- Coze 工作流碳足迹分析与图表展示
 
-## 技术栈
+---
+
+## 1. 技术栈
+
+### 前端
 
 - Next.js 16（App Router）
-- TypeScript
-- Prisma + MySQL
-- Axios（统一请求层）
-- WebSocket（独立 `ws` 聊天服务）
-- ECharts（碳足迹图表）
-- wangEditor 5（社区发帖富文本）
+- React 19 + TypeScript
+- Tailwind CSS 4
+- ECharts 6（饼图 + 地图）
 
-## 核心功能
+### 后端 / 数据层
 
-### 1) 用户与个人中心
-- 登录鉴权
+- Next.js Route Handlers（API 路由）
+- Prisma 5 + MySQL
+- `ws`（独立实时聊天服务）
+
+### AI / 工作流
+
+- DeepSeek Chat Completions（SSE）
+- Coze Workflow `stream_run`
+
+---
+
+## 2. 核心能力
+
+### 2.1 AI 助手（流式）
+
+- 服务端代理 DeepSeek 接口并转发 SSE
+- 客户端增量渲染回复
+- 统一错误语义化（如余额不足、鉴权失败）
+
+### 2.2 前端 AI 工具调用（重点）
+
+在 AI 聊天页实现了“前端先调工具，再把结构化结果喂给模型”的能力：
+
+1. 意图识别：是否属于二手查询或追问延续
+2. 槽位抽取：价格区间、品类、数量
+3. 多轮融合：继承最近若干轮筛选条件并覆盖更新
+4. 前端调用 `/api/commodities` 获取真实数据
+5. 将 `toolContext` 注入 `/api/ai/stream`，让模型仅基于工具结果回答
+
+相关实现：
+
+- [src/app/ai/AiClient.tsx](src/app/ai/AiClient.tsx)
+- [src/app/api/ai/stream/route.ts](src/app/api/ai/stream/route.ts)
+
+### 2.3 碳足迹工作流
+
+- 前端收集交通/用电/饮食参数
+- 服务端调用 Coze `stream_run`
+- 解析 SSE 中 `Message` 内容
+- 抽取 summary 与 ECharts option 代码
+- 支持点击饼图分项触发深度分析（drilldown）
+
+相关实现：
+
+- [src/app/carbon/CarbonClient.tsx](src/app/carbon/CarbonClient.tsx)
+- [src/app/api/carbon/workflow/route.ts](src/app/api/carbon/workflow/route.ts)
+
+---
+
+## 3. 功能模块
+
+### 用户与账号
+
+- 注册 / 登录 / 退出
 - 个人资料编辑
-- 头像图片上传
-- 密码修改
+- 地址管理
 
-### 2) 社区论坛
-- 话题发布 / 列表 / 搜索 / 筛选 / 分页
+### 社区
+
+- 分类、发帖、列表、详情
 - 富文本内容展示
-- 帖子详情与删除（权限校验）
 
-### 3) 二手交易
-- 商品发布（多图上传）
-- 商品编辑 / 查询 / 详情
+### 二手交易
 
-### 4) 实时聊天室
-- 联系人列表
-- 双向实时消息
-- 消息落库与历史拉取
+- 商品发布、查询、详情
+- 基于关键词/价格/数量筛选
 
-### 5) AI 环保助手
-- DeepSeek 接口接入
-- SSE 流式输出
-- Markdown 风格文本渲染
-- 友好错误提示（如余额不足）
+### 实时聊天
 
-### 6) 碳足迹模块
-- 输入出行/用电/饮食参数
-- 环形图展示碳排构成
-- 中国地图展示省级数据
-- 历史记录与低碳建议
+- 独立 WS 服务
+- 消息落库与实时推送
 
-## 项目结构（核心）
+### AI 与碳足迹
+
+- `/ai`：流式问答 + 工具调用
+- `/carbon`：工作流分析 + 图表可视化
+
+---
+
+## 4. 目录结构（核心）
 
 - [src/app](src/app)：页面与 API 路由
 - [src/components](src/components)：复用组件
-- [src/lib](src/lib)：鉴权、数据库、HTTP 封装
-- [prisma](prisma)：数据模型与迁移
+- [src/lib](src/lib)：鉴权、Prisma、请求封装
+- [prisma/schema.prisma](prisma/schema.prisma)：数据模型
 - [scripts/im-ws-server.mjs](scripts/im-ws-server.mjs)：聊天 WS 服务
-- [public/legacy](public/legacy)：旧版兼容资源
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)：架构说明（答辩版）
+- [public/legacy](public/legacy)：历史静态资源
 
-## 快速开始
+---
 
-### 1. 安装依赖
+## 5. 数据模型（Prisma）
+
+核心实体：
+
+- `User`：用户
+- `Commodity`：二手商品
+- `Post` / `PostCategory`：社区帖子与分类
+- `ChatMessage`：私聊消息
+- `Address`：收货地址
+- `Task`：示例任务
+
+完整定义见 [prisma/schema.prisma](prisma/schema.prisma)。
+
+---
+
+## 6. API 概览
+
+按功能分组（部分）：
+
+- 鉴权：`/api/auth/*`
+- 用户：`/api/users/*`
+- 地址：`/api/addresses/*`
+- 社区：`/api/posts*`、`/api/post-categories`
+- 商品：`/api/commodities*`
+- 上传：`/api/uploads/*`
+- AI 流式：`/api/ai/stream`
+- 碳足迹工作流：`/api/carbon/workflow`
+- 地图：`/api/maps/china`
+- 聊天：`/api/chat/messages`、`/api/pusher/auth`（可选）
+
+---
+
+## 7. 环境变量
+
+在项目根目录创建 `.env`。
+
+### 必填（本地最小可运行）
+
+```env
+DATABASE_URL="mysql://user:password@localhost:3306/next_app"
+AUTH_SECRET="replace-with-strong-secret"
+DEEPSEEK_API_KEY="your_deepseek_api_key"
+DEEPSEEK_MODEL="deepseek-chat"
+```
+
+### 碳足迹工作流（启用 `/carbon` AI 分析时）
+
+```env
+COZE_API_TOKEN="your_coze_pat"
+COZE_WORKFLOW_ID="your_workflow_id"
+COZE_BASE_URL="https://api.coze.cn"
+```
+
+### 可选（第三方服务）
+
+```env
+# 上传（Vercel Blob）
+BLOB_READ_WRITE_TOKEN=""
+
+# Pusher（如果启用）
+PUSHER_APP_ID=""
+PUSHER_KEY=""
+PUSHER_SECRET=""
+PUSHER_CLUSTER=""
+NEXT_PUBLIC_PUSHER_KEY=""
+NEXT_PUBLIC_PUSHER_CLUSTER=""
+
+# 独立 WS 服务端口
+IM_WS_PORT="8090"
+```
+
+### 可选（上游代理接口）
+
+```env
+UPSTREAM_SERVICE_TOKEN=""
+SECONDHAND_UPSTREAM_URL=""
+SECONDHAND_UPSTREAM_TOKEN=""
+CARBON_UPSTREAM_URL=""
+CARBON_UPSTREAM_TOKEN=""
+LOWCARBON_UPSTREAM_URL=""
+LOWCARBON_UPSTREAM_TOKEN=""
+WORKFLOW_SERVICE_TOKEN=""
+```
+
+---
+
+## 8. 本地开发
+
+### 8.1 安装依赖
 
 ```bash
 npm install
 ```
 
-### 2. 配置环境变量
-
-在项目根目录创建 `.env`：
-
-```env
-DATABASE_URL="mysql://user:password@localhost:3306/next_app"
-DEEPSEEK_API_KEY="your_deepseek_api_key"
-DEEPSEEK_MODEL="deepseek-chat"
-```
-
-### 3. 初始化数据库
+### 8.2 初始化 Prisma
 
 ```bash
 npm run prisma:generate
 npm run prisma:migrate -- --name init
 ```
 
-### 4. 启动服务
+### 8.3 启动服务
 
 ```bash
-# Web 主服务
+# Next.js
 npm run dev
 
-# 聊天 WS 服务（新终端）
+# WebSocket 聊天服务（新终端）
 npm run ws:dev
 ```
 
-## 常用页面
+默认地址：
+
+- Web: `http://localhost:3000`
+- WS: `ws://localhost:8090/chat/chat/{username}`
+
+---
+
+## 9. 页面路由
 
 - `/login`：登录
 - `/home`：首页
 - `/community`：社区
 - `/trade`：二手交易
-- `/im`：聊天室
+- `/im`：实时聊天
 - `/ai`：AI 助手
 - `/carbon`：碳足迹
 
+---
+
+## 10. 常用脚本
+
+```bash
+npm run dev            # 本地开发
+npm run build          # 生产构建（含 prisma generate）
+npm run start          # 生产启动
+npm run lint           # ESLint
+npm run ws:dev         # 聊天 WS 服务
+npm run prisma:generate
+npm run prisma:migrate
+```
+
+---
+
+## 11. 故障排查
+
+### 11.1 `未登录 / 401`
+
+- 检查登录状态与 Cookie 是否存在
+- 确认 `AUTH_SECRET` 已配置
+
+### 11.2 数据库连接失败（P1000/P1001）
+
+- 检查 `DATABASE_URL` 用户名、密码、端口
+- 确认 MySQL 服务已启动并可访问
+
+### 11.3 AI 无响应
+
+- 检查 `DEEPSEEK_API_KEY`
+- 查看 `/api/ai/stream` 返回错误信息
+
+### 11.4 碳足迹工作流失败
+
+- 检查 `COZE_API_TOKEN`、`COZE_WORKFLOW_ID`
+- 查看 `/api/carbon/workflow` 的错误返回
+
+### 11.5 上传失败
+
+- 检查 `BLOB_READ_WRITE_TOKEN`
+
+---
+
+## 12. 架构文档
+
+更完整的系统设计、难点与答辩话术见：
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+
+---
 
