@@ -56,63 +56,7 @@ function extractSummaryAndChart(text: string) {
   const match = text.match(/```echarts\s*([\s\S]*?)```/i);
   const chartCode = match?.[1]?.trim() || "";
   const summary = text.split(/```echarts/i)[0]?.trim() || text.trim();
-  return { summary, chartCode: normalizeChartCode(chartCode) };
-}
-
-function normalizeChartCode(code: string) {
-  if (!code) return "";
-
-  const htmlScriptMatch = [...code.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)];
-  const source = htmlScriptMatch.length > 0
-    ? (htmlScriptMatch[htmlScriptMatch.length - 1][1] || code)
-    : code;
-
-  const assignMatch = source.match(/(?:var|let|const)?\s*option\s*=\s*/i);
-  if (!assignMatch || assignMatch.index === undefined) {
-    return code.trim();
-  }
-
-  const searchFrom = assignMatch.index + assignMatch[0].length;
-  const braceStart = source.indexOf("{", searchFrom);
-  if (braceStart < 0) return code.trim();
-
-  let depth = 0;
-  let inSingle = false;
-  let inDouble = false;
-  let escaped = false;
-
-  for (let i = braceStart; i < source.length; i += 1) {
-    const ch = source[i];
-
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-    if (ch === "\\") {
-      escaped = true;
-      continue;
-    }
-    if (!inDouble && ch === "'") {
-      inSingle = !inSingle;
-      continue;
-    }
-    if (!inSingle && ch === '"') {
-      inDouble = !inDouble;
-      continue;
-    }
-    if (inSingle || inDouble) continue;
-
-    if (ch === "{") depth += 1;
-    if (ch === "}") {
-      depth -= 1;
-      if (depth === 0) {
-        const optionLiteral = source.slice(braceStart, i + 1).trim();
-        return `option = ${optionLiteral};`;
-      }
-    }
-  }
-
-  return code.trim();
+  return { summary, chartCode };
 }
 
 export async function POST(request: Request) {
