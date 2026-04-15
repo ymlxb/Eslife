@@ -41,10 +41,10 @@ const WELCOME_MESSAGE: Msg = {
 };
 
 const QUICK_ACTIONS = [
-  "给我一份一周低碳通勤建议",
+  "帮我找一下20元以内的二手书",
+  "推荐几款2000元以下的二手笔记本",
   "如何把厨房垃圾减量 30%？",
-  "推荐 3 个家庭节水微习惯",
-  "帮我做一个可持续购物清单",
+  "给我一份一周低碳通勤建议",
 ];
 
 function renderInline(text: string): ReactNode[] {
